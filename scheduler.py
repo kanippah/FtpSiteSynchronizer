@@ -23,11 +23,16 @@ def schedule_job(job):
             pass
         
         if job.schedule_type == 'one_time':
+            # Ensure datetime is naive (no timezone info) to avoid pickle issues
+            run_date = job.schedule_datetime
+            if run_date.tzinfo is not None:
+                run_date = run_date.replace(tzinfo=None)
+            
             scheduler.add_job(
                 func=execute_job,
                 args=[job.id],
                 trigger='date',
-                run_date=job.schedule_datetime,
+                run_date=run_date,
                 id=job_id,
                 replace_existing=True
             )
