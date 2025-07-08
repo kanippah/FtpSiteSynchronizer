@@ -180,17 +180,23 @@ def test_site(site_id):
         result = client.test_connection()
         
         if result['success']:
-            flash(f'Connection to "{site.name}" successful!', 'success')
             log_system_message('info', f'Connection test successful for "{site.name}"', 'sites')
+            return jsonify({
+                'success': True,
+                'message': f'Connection to "{site.name}" successful!'
+            })
         else:
-            flash(f'Connection to "{site.name}" failed: {result["error"]}', 'error')
             log_system_message('error', f'Connection test failed for "{site.name}": {result["error"]}', 'sites')
-        
-        return redirect(url_for('sites'))
+            return jsonify({
+                'success': False,
+                'message': f'Connection to "{site.name}" failed: {result["error"]}'
+            })
     except Exception as e:
         logger.error(f"Error testing site connection: {str(e)}")
-        flash(f'Error testing site connection: {str(e)}', 'error')
-        return redirect(url_for('sites'))
+        return jsonify({
+            'success': False,
+            'message': f'Error testing site connection: {str(e)}'
+        })
 
 @app.route('/jobs')
 def jobs():

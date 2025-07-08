@@ -135,12 +135,12 @@ function testConnection(siteId, button) {
     button.disabled = true;
     
     fetch(`/sites/${siteId}/test`)
-        .then(response => {
-            if (response.ok) {
-                // The server handles the flash message
-                location.reload();
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
             } else {
-                throw new Error('Network response was not ok');
+                showAlert(data.message, 'danger');
             }
         })
         .catch(error => {
