@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Jobs - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">Jobs</h1>
+            <a href="{{ url_for('new_job') }}" class="btn btn-primary">
+                <i data-feather="plus" class="me-2"></i>Create New Job
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if jobs %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Job Name</th>
+                                    <th>Site</th>
+                                    <th>Type</th>
+                                    <th>Schedule</th>
+                                    <th>Status</th>
+                                    <th>Last Run</th>
+                                    <th>Next Run</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in jobs %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">{{ job.name }}</div>
+                                        {% if job.use_date_range %}
+                                            <small class="text-muted">
+                                                <i data-feather="calendar" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                                {{ job.date_from.strftime('%Y-%m-%d') }} to {{ job.date_to.strftime('%Y-%m-%d') }}
+                                            </small>
+                                        {% endif %}
+                                        {% if job.download_all %}
+                                            <small class="text-muted">
+                                                <i data-feather="download" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                                Download All
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div>{{ job.site.name }}</div>
+                                        <small class="text-muted">{{ job.site.protocol|upper }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if job.job_type == 'download' else 'info' }}">
+                                            <i data-feather="{{ 'download' if job.job_type == 'download' else 'upload' }}" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                            {{ job.job_type|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div>{{ job.schedule_type|title }}</div>
+                                        {% if job.schedule_type == 'one_time' %}
+                                            <small class="text-muted">{{ job.schedule_datetime.strftime('%Y-%m-%d %H:%M') if job.schedule_datetime else 'Not set' }}</small>
+                                        {% elif job.schedule_type == 'recurring' %}
+                                            <small class="text-muted">{{ job.cron_expression or 'Not set' }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge status-badge status-{{ job.status }}">
+                                            {% if job.status == 'running' %}
+                                                <span class="loading-spinner me-1"></span>
+                                            {% endif %}
+                                            {{ job.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if job.last_run %}
+                                            <div>{{ job.last_run.strftime('%Y-%m-%d') }}</div>
+                                            <small class="text-muted">{{ job.last_run.strftime('%H:%M:%S') }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if job.next_run %}
+                                            <div>{{ job.next_run.strftime('%Y-%m-%d') }}</div>
+                                            <small class="text-muted">{{ job.next_run.strftime('%H:%M:%S') }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <a href="/jobs/{{ job.id }}/run" class="btn btn-sm btn-outline-success run-job" data-job-id="{{ job.id }}" data-job-name="{{ job.name }}">
+                                                <i data-feather="play" class="me-1"></i>Run
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-danger delete-job" data-job-id="{{ job.id }}" data-job-name="{{ job.name }}">
+                                                <i data-feather="trash-2" class="me-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Job Statistics -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ jobs|length }}</h5>
+                    <p class="card-text text-muted">Total Jobs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ jobs|selectattr('status', 'equalto', 'pending')|list|length }}</h5>
+                    <p class="card-text text-muted">Pending</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ jobs|selectattr('status', 'equalto', 'running')|list|length }}</h5>
+                    <p class="card-text text-muted">Running</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ jobs|selectattr('status', 'equalto', 'completed')|list|length }}</h5>
+                    <p class="card-text text-muted">Completed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i data-feather="clock" class="text-muted mb-3" style="width: 4rem; height: 4rem;"></i>
+                    <h4 class="text-muted">No jobs created yet</h4>
+                    <p class="text-muted">Create your first job to start automating file transfers.</p>
+                    <a href="{{ url_for('new_job') }}" class="btn btn-primary">
+                        <i data-feather="plus" class="me-2"></i>Create Your First Job
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/jobs.js') }}"></script>
+<script>
+    // Initialize feather icons after content is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+    });
+</script>
+{% endblock %}

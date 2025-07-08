@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Job' if job else 'Create New Job' }} - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">{{ 'Edit Job' if job else 'Create New Job' }}</h1>
+            <a href="{{ url_for('jobs') }}" class="btn btn-secondary">
+                <i data-feather="arrow-left" class="me-2"></i>Back to Jobs
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{ 'Edit Job Details' if job else 'Job Configuration' }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="jobForm">
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <h5>Basic Information</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Job Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" value="{{ job.name if job else '' }}" required>
+                                    <div class="form-text">A descriptive name for this job</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="site_id" class="form-label">Source Site <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="site_id" name="site_id" required>
+                                        <option value="">Select a site</option>
+                                        {% for site in sites %}
+                                        <option value="{{ site.id }}" {{ 'selected' if job and job.site_id == site.id else '' }}>
+                                            {{ site.name }} ({{ site.protocol|upper }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="job_type" class="form-label">Job Type <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="job_type" name="job_type" required>
+                                        <option value="">Select job type</option>
+                                        <option value="download" {{ 'selected' if job and job.job_type == 'download' else '' }}>Download</option>
+                                        <option value="upload" {{ 'selected' if job and job.job_type == 'upload' else '' }}>Upload</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="local_path" class="form-label">Local Path</label>
+                                    <input type="text" class="form-control" id="local_path" name="local_path" value="{{ job.local_path if job else './downloads' }}">
+                                    <div class="form-text">Local directory for file operations</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Upload specific fields -->
+                        <div id="upload_fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="target_site_id" class="form-label">Target Site</label>
+                                <select class="form-select" id="target_site_id" name="target_site_id">
+                                    <option value="">Select target site</option>
+                                    {% for site in sites %}
+                                    <option value="{{ site.id }}" {{ 'selected' if job and job.target_site_id == site.id else '' }}>
+                                        {{ site.name }} ({{ site.protocol|upper }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Destination site for upload jobs</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Schedule Settings -->
+                    <div class="form-section">
+                        <h5>Schedule Settings</h5>
+                        
+                        <div class="mb-3">
+                            <label for="schedule_type" class="form-label">Schedule Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="schedule_type" name="schedule_type" required>
+                                <option value="">Select schedule type</option>
+                                <option value="one_time" {{ 'selected' if job and job.schedule_type == 'one_time' else '' }}>One Time</option>
+                                <option value="recurring" {{ 'selected' if job and job.schedule_type == 'recurring' else '' }}>Recurring</option>
+                            </select>
+                        </div>
+                        
+                        <!-- One-time schedule fields -->
+                        <div id="one_time_fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="schedule_datetime" class="form-label">Schedule Date & Time</label>
+                                <input type="datetime-local" class="form-control" id="schedule_datetime" name="schedule_datetime" value="{{ job.schedule_datetime.strftime('%Y-%m-%dT%H:%M') if job and job.schedule_datetime else '' }}">
+                            </div>
+                        </div>
+                        
+                        <!-- Recurring schedule fields -->
+                        <div id="recurring_fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="cron_expression" class="form-label">Cron Expression</label>
+                                <input type="text" class="form-control" id="cron_expression" name="cron_expression" value="{{ job.cron_expression if job else '' }}" placeholder="0 6 * * *">
+                                <div class="form-text">Format: minute hour day month day_of_week</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Transfer Settings -->
+                    <div class="form-section">
+                        <h5>Transfer Settings</h5>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_date_range" name="use_date_range" {{ 'checked' if job and job.use_date_range else '' }}>
+                                <label class="form-check-label" for="use_date_range">
+                                    Use Date Range Filter
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Date range fields -->
+                        <div id="date_range_fields" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="date_from" class="form-label">From Date</label>
+                                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ job.date_from.strftime('%Y-%m-%d') if job and job.date_from else '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="date_to" class="form-label">To Date</label>
+                                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ job.date_to.strftime('%Y-%m-%d') if job and job.date_to else '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Download all option -->
+                        <div id="download_all_field">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="download_all" name="download_all" {{ 'checked' if job and job.download_all else '' }}>
+                                    <label class="form-check-label" for="download_all">
+                                        Download All Files (Ignore Date Range)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('jobs') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="save" class="me-2"></i>{{ 'Update Job' if job else 'Create Job' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Help Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="help-circle" class="me-2"></i>Help
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Job Types</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Download:</strong> Download files from FTP/SFTP site</li>
+                    <li><strong>Upload:</strong> Upload files to FTP/SFTP site</li>
+                </ul>
+                
+                <h6 class="mt-3">Schedule Types</h6>
+                <ul class="list-unstyled">
+                    <li><strong>One Time:</strong> Run once at a specific date/time</li>
+                    <li><strong>Recurring:</strong> Run on a recurring schedule</li>
+                </ul>
+                
+                <h6 class="mt-3">Cron Expression Examples</h6>
+                <ul class="list-unstyled small">
+                    <li><code>0 6 * * *</code> - Daily at 6 AM</li>
+                    <li><code>0 */6 * * *</code> - Every 6 hours</li>
+                    <li><code>0 9 * * 1</code> - Every Monday at 9 AM</li>
+                    <li><code>0 0 1 * *</code> - First day of month</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Sites Card -->
+        {% if not sites %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="alert-circle" class="me-2"></i>No Sites Available
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">You need to create at least one FTP/SFTP site before creating jobs.</p>
+                <a href="{{ url_for('new_site') }}" class="btn btn-primary w-100">
+                    <i data-feather="plus" class="me-2"></i>Add Site
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/jobs.js') }}"></script>
+<script>
+    // Initialize feather icons after content is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+    });
+</script>
+{% endblock %}

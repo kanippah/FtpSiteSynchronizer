@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">System Settings</h1>
+            <button type="button" class="btn btn-info" id="testEmailBtn">
+                <i data-feather="mail" class="me-2"></i>Test Email
+            </button>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="settingsForm">
+    <div class="row">
+        <div class="col-lg-6">
+            <!-- Email/SMTP Settings -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i data-feather="mail" class="me-2"></i>Email Notification Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="smtp_server" class="form-label">SMTP Server</label>
+                                <input type="text" class="form-control" id="smtp_server" name="smtp_server" value="{{ settings.smtp_server or '' }}" placeholder="smtp.gmail.com">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="smtp_port" class="form-label">SMTP Port</label>
+                                <input type="number" class="form-control" id="smtp_port" name="smtp_port" value="{{ settings.smtp_port or '587' }}" placeholder="587">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="smtp_use_tls" name="smtp_use_tls" value="true" {{ 'checked' if settings.smtp_use_tls == 'true' else '' }}>
+                            <label class="form-check-label" for="smtp_use_tls">
+                                Use TLS/STARTTLS
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="smtp_username" class="form-label">SMTP Username</label>
+                                <input type="text" class="form-control" id="smtp_username" name="smtp_username" value="{{ settings.smtp_username or '' }}" placeholder="your-email@gmail.com">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="smtp_password" class="form-label">SMTP Password</label>
+                                <input type="password" class="form-control" id="smtp_password" name="smtp_password" placeholder="Leave empty to keep current">
+                                <div class="form-text">For Gmail, use App Password instead of regular password</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="smtp_from_email" class="form-label">From Email</label>
+                                <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email" value="{{ settings.smtp_from_email or '' }}" placeholder="noreply@yourcompany.com">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="notification_email" class="form-label">Notification Email</label>
+                                <input type="email" class="form-control" id="notification_email" name="notification_email" value="{{ settings.notification_email or '' }}" placeholder="admin@yourcompany.com">
+                                <div class="form-text">Where to send job notifications</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <!-- Database Settings -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i data-feather="database" class="me-2"></i>Database Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i data-feather="info" class="me-2"></i>
+                        <strong>Note:</strong> Changing database settings requires application restart.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="db_host" class="form-label">Database Host</label>
+                                <input type="text" class="form-control" id="db_host" name="db_host" value="{{ settings.db_host or 'localhost' }}" placeholder="localhost">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="db_port" class="form-label">Database Port</label>
+                                <input type="number" class="form-control" id="db_port" name="db_port" value="{{ settings.db_port or '5432' }}" placeholder="5432">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="db_name" class="form-label">Database Name</label>
+                        <input type="text" class="form-control" id="db_name" name="db_name" value="{{ settings.db_name or 'ftpmanager' }}" placeholder="ftpmanager">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="db_username" class="form-label">Database Username</label>
+                                <input type="text" class="form-control" id="db_username" name="db_username" value="{{ settings.db_username or '' }}" placeholder="postgres">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="db_password" class="form-label">Database Password</label>
+                                <input type="password" class="form-control" id="db_password" name="db_password" placeholder="Leave empty to keep current">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Information -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i data-feather="info" class="me-2"></i>System Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Python Version</h6>
+                                <p class="mb-0">{{ python_version if python_version else 'Unknown' }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Flask Version</h6>
+                                <p class="mb-0">{{ flask_version if flask_version else 'Unknown' }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Database Status</h6>
+                                <p class="mb-0">
+                                    <span class="badge bg-success">
+                                        <i data-feather="check-circle" class="me-1"></i>Connected
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Scheduler Status</h6>
+                                <p class="mb-0">
+                                    <span class="badge bg-success">
+                                        <i data-feather="clock" class="me-1"></i>Running
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Form Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
+                <button type="submit" class="btn btn-primary">
+                    <i data-feather="save" class="me-2"></i>Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Email Test Modal -->
+<div class="modal fade" id="emailTestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Test Email Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>A test email will be sent to the configured notification email address.</p>
+                <p><strong>Make sure to save your settings first!</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="sendTestEmail">Send Test Email</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize feather icons after content is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        
+        // Handle test email button
+        const testEmailBtn = document.getElementById('testEmailBtn');
+        const emailTestModal = new bootstrap.Modal(document.getElementById('emailTestModal'));
+        
+        testEmailBtn.addEventListener('click', function() {
+            emailTestModal.show();
+        });
+        
+        // Handle send test email
+        document.getElementById('sendTestEmail').addEventListener('click', function() {
+            const button = this;
+            const originalText = button.textContent;
+            
+            // Show loading state
+            button.innerHTML = '<span class="loading-spinner me-2"></span>Sending...';
+            button.disabled = true;
+            
+            // Send test email (this would typically be an AJAX call)
+            fetch('/api/test-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Test email sent successfully!', 'success');
+                } else {
+                    showAlert(`Failed to send test email: ${data.error}`, 'danger');
+                }
+            })
+            .catch(error => {
+                showAlert('Error sending test email. Please check your settings.', 'danger');
+            })
+            .finally(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+                emailTestModal.hide();
+            });
+        });
+        
+        // Form validation
+        const settingsForm = document.getElementById('settingsForm');
+        settingsForm.addEventListener('submit', function(e) {
+            if (!validateSettingsForm()) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    });
+    
+    function validateSettingsForm() {
+        let isValid = true;
+        
+        // Basic email validation
+        const emailFields = ['smtp_from_email', 'notification_email'];
+        emailFields.forEach(field => {
+            const input = document.getElementById(field);
+            if (input && input.value) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(input.value)) {
+                    showFieldError(input, 'Please enter a valid email address');
+                    isValid = false;
+                } else {
+                    clearFieldError(input);
+                }
+            }
+        });
+        
+        // Port validation
+        const portFields = ['smtp_port', 'db_port'];
+        portFields.forEach(field => {
+            const input = document.getElementById(field);
+            if (input && input.value) {
+                const port = parseInt(input.value);
+                if (isNaN(port) || port < 1 || port > 65535) {
+                    showFieldError(input, 'Please enter a valid port number (1-65535)');
+                    isValid = false;
+                } else {
+                    clearFieldError(input);
+                }
+            }
+        });
+        
+        return isValid;
+    }
+    
+    function showFieldError(input, message) {
+        clearFieldError(input);
+        
+        input.classList.add('is-invalid');
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'invalid-feedback';
+        errorDiv.textContent = message;
+        
+        input.parentNode.appendChild(errorDiv);
+    }
+    
+    function clearFieldError(input) {
+        if (input) {
+            input.classList.remove('is-invalid');
+            
+            const errorDiv = input.parentNode.querySelector('.invalid-feedback');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+        }
+    }
+    
+    function showAlert(message, type = 'info') {
+        const alertsContainer = document.getElementById('alerts-container') || document.body;
+        
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        alertsContainer.appendChild(alert);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.classList.remove('show');
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.remove();
+                    }
+                }, 150);
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Site' if site else 'Add New Site' }} - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">{{ 'Edit Site' if site else 'Add New Site' }}</h1>
+            <a href="{{ url_for('sites') }}" class="btn btn-secondary">
+                <i data-feather="arrow-left" class="me-2"></i>Back to Sites
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{ 'Edit Site Details' if site else 'Site Configuration' }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="siteForm">
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <h5>Basic Information</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Site Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" value="{{ site.name if site else '' }}" required>
+                                    <div class="form-text">A friendly name to identify this site</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="protocol" class="form-label">Protocol <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="protocol" name="protocol" required>
+                                        <option value="">Select Protocol</option>
+                                        <option value="ftp" {{ 'selected' if site and site.protocol == 'ftp' else '' }}>FTP</option>
+                                        <option value="sftp" {{ 'selected' if site and site.protocol == 'sftp' else '' }}>SFTP</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Connection Details -->
+                    <div class="form-section">
+                        <h5>Connection Details</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="host" class="form-label">Host <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="host" name="host" value="{{ site.host if site else '' }}" required>
+                                    <div class="form-text">Server hostname or IP address</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="port" class="form-label">Port <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="port" name="port" value="{{ site.port if site else '21' }}" min="1" max="65535" required>
+                                    <div class="form-text">Default: 21 (FTP), 22 (SFTP)</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="username" name="username" value="{{ site.username if site else '' }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="password" name="password" placeholder="{{ 'Leave empty to keep current password' if site else '' }}" {{ 'required' if not site else '' }}>
+                                    {% if site %}
+                                        <div class="form-text">Leave empty to keep current password</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Transfer Settings -->
+                    <div class="form-section">
+                        <h5>Transfer Settings</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="remote_path" class="form-label">Remote Path</label>
+                                    <input type="text" class="form-control" id="remote_path" name="remote_path" value="{{ site.remote_path if site else '/' }}">
+                                    <div class="form-text">Default directory on the remote server</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="transfer_type" class="form-label">Transfer Type</label>
+                                    <select class="form-select" id="transfer_type" name="transfer_type">
+                                        <option value="files" {{ 'selected' if site and site.transfer_type == 'files' else '' }}>Files Only</option>
+                                        <option value="folders" {{ 'selected' if site and site.transfer_type == 'folders' else '' }}>Folders & Files</option>
+                                    </select>
+                                    <div class="form-text">What to transfer during jobs</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('sites') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="save" class="me-2"></i>{{ 'Update Site' if site else 'Create Site' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Help Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="help-circle" class="me-2"></i>Help
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Protocol Information</h6>
+                <ul class="list-unstyled">
+                    <li><strong>FTP:</strong> File Transfer Protocol (port 21)</li>
+                    <li><strong>SFTP:</strong> SSH File Transfer Protocol (port 22)</li>
+                </ul>
+                
+                <h6 class="mt-3">Common Ports</h6>
+                <ul class="list-unstyled">
+                    <li><strong>FTP:</strong> 21</li>
+                    <li><strong>SFTP:</strong> 22</li>
+                    <li><strong>FTP over TLS:</strong> 990</li>
+                </ul>
+                
+                <h6 class="mt-3">Transfer Types</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Files Only:</strong> Transfer individual files</li>
+                    <li><strong>Folders & Files:</strong> Transfer entire directory structures</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Connection Test -->
+        {% if site %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="wifi" class="me-2"></i>Connection Test
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Test the connection to verify your settings are correct.</p>
+                <a href="/sites/{{ site.id }}/test" class="btn btn-info w-100 test-connection" data-site-id="{{ site.id }}">
+                    <i data-feather="wifi" class="me-2"></i>Test Connection
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/sites.js') }}"></script>
+<script>
+    // Initialize feather icons after content is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+    });
+</script>
+{% endblock %}

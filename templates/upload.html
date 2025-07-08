@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Files - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">Upload Files</h1>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                <i data-feather="arrow-left" class="me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="upload" class="me-2"></i>Upload Files to FTP/SFTP
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <!-- Site Selection -->
+                    <div class="mb-4">
+                        <label for="site_id" class="form-label">Select Destination Site <span class="text-danger">*</span></label>
+                        <select class="form-select" id="site_id" name="site_id" required>
+                            <option value="">Choose a site...</option>
+                            {% for site in sites %}
+                            <option value="{{ site.id }}">
+                                {{ site.name }} ({{ site.protocol|upper }}) - {{ site.host }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- File Upload Area -->
+                    <div class="mb-4">
+                        <label for="files" class="form-label">Select Files <span class="text-danger">*</span></label>
+                        <div class="file-drop-zone" id="dropZone">
+                            <div class="text-center">
+                                <i data-feather="upload-cloud" class="text-muted mb-2" style="width: 3rem; height: 3rem;"></i>
+                                <p class="mb-2">Drag and drop files here or click to select</p>
+                                <input type="file" class="form-control" id="files" name="files" multiple style="display: none;">
+                                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('files').click()">
+                                    <i data-feather="file-plus" class="me-2"></i>Select Files
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Files List -->
+                    <div id="selectedFiles" class="mb-4" style="display: none;">
+                        <h6>Selected Files:</h6>
+                        <div id="filesList" class="list-group"></div>
+                    </div>
+                    
+                    <!-- Upload Progress -->
+                    <div id="uploadProgress" class="mb-4" style="display: none;">
+                        <h6>Upload Progress:</h6>
+                        <div class="progress mb-2">
+                            <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%">0%</div>
+                        </div>
+                        <div id="progressText" class="text-muted small"></div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                        <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+                            <i data-feather="upload" class="me-2"></i>Upload Files
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Upload Guide -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="help-circle" class="me-2"></i>Upload Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>How to Upload Files</h6>
+                <ol class="list-unstyled">
+                    <li class="mb-2">
+                        <span class="badge bg-primary me-2">1</span>
+                        Select the destination FTP/SFTP site
+                    </li>
+                    <li class="mb-2">
+                        <span class="badge bg-primary me-2">2</span>
+                        Choose files to upload (drag & drop or click)
+                    </li>
+                    <li class="mb-2">
+                        <span class="badge bg-primary me-2">3</span>
+                        Click "Upload Files" to start the transfer
+                    </li>
+                </ol>
+                
+                <h6 class="mt-3">Supported File Types</h6>
+                <p class="text-muted small">All file types are supported. Large files may take longer to upload.</p>
+                
+                <h6 class="mt-3">Upload Limits</h6>
+                <ul class="list-unstyled small">
+                    <li>• Maximum file size: 100MB per file</li>
+                    <li>• Maximum files: 50 files per upload</li>
+                    <li>• Total size limit: 1GB per upload</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Sites Status -->
+        {% if sites %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="server" class="me-2"></i>Available Sites
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for site in sites %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <div class="fw-bold">{{ site.name }}</div>
+                        <small class="text-muted">{{ site.protocol|upper }} - {{ site.host }}</small>
+                    </div>
+                    <span class="badge protocol-{{ site.protocol }}">{{ site.protocol|upper }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="alert-circle" class="me-2"></i>No Sites Available
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">You need to create at least one FTP/SFTP site before uploading files.</p>
+                <a href="{{ url_for('new_site') }}" class="btn btn-primary w-100">
+                    <i data-feather="plus" class="me-2"></i>Add Site
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Upload Results Modal -->
+<div class="modal fade" id="uploadResultsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="uploadResultsContent">
+                    <!-- Upload results will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize feather icons and upload functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        initializeUpload();
+    });
+    
+    function initializeUpload() {
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('files');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const selectedFiles = document.getElementById('selectedFiles');
+        const filesList = document.getElementById('filesList');
+        
+        // Drag and drop functionality
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+        
+        // Form submission
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const siteId = document.getElementById('site_id').value;
+            const files = fileInput.files;
+            
+            if (!siteId) {
+                showAlert('Please select a destination site', 'warning');
+                return;
+            }
+            
+            if (files.length === 0) {
+                showAlert('Please select at least one file', 'warning');
+                return;
+            }
+            
+            uploadFiles();
+        });
+    }
+    
+    function handleFiles(files) {
+        const filesList = document.getElementById('filesList');
+        const selectedFiles = document.getElementById('selectedFiles');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('files');
+        
+        // Clear previous selection
+        filesList.innerHTML = '';
+        
+        if (files.length === 0) {
+            selectedFiles.style.display = 'none';
+            uploadBtn.disabled = true;
+            return;
+        }
+        
+        // Update file input
+        fileInput.files = files;
+        
+        // Display selected files
+        selectedFiles.style.display = 'block';
+        
+        let totalSize = 0;
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            totalSize += file.size;
+            
+            const fileItem = document.createElement('div');
+            fileItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            fileItem.innerHTML = `
+                <div>
+                    <div class="fw-bold">${file.name}</div>
+                    <small class="text-muted">${formatFileSize(file.size)}</small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile(${i})">
+                    <i data-feather="x" style="width: 1rem; height: 1rem;"></i>
+                </button>
+            `;
+            
+            filesList.appendChild(fileItem);
+        }
+        
+        // Add total size info
+        const totalItem = document.createElement('div');
+        totalItem.className = 'list-group-item list-group-item-light';
+        totalItem.innerHTML = `
+            <strong>Total: ${files.length} files (${formatFileSize(totalSize)})</strong>
+        `;
+        filesList.appendChild(totalItem);
+        
+        // Enable upload button
+        uploadBtn.disabled = false;
+        
+        // Re-initialize feather icons
+        feather.replace();
+    }
+    
+    function removeFile(index) {
+        const fileInput = document.getElementById('files');
+        const files = Array.from(fileInput.files);
+        files.splice(index, 1);
+        
+        // Create new FileList
+        const dt = new DataTransfer();
+        files.forEach(file => dt.items.add(file));
+        fileInput.files = dt.files;
+        
+        // Update display
+        handleFiles(fileInput.files);
+    }
+    
+    function uploadFiles() {
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressDiv = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const uploadForm = document.getElementById('uploadForm');
+        
+        // Show progress
+        progressDiv.style.display = 'block';
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="loading-spinner me-2"></span>Uploading...';
+        
+        // Create FormData
+        const formData = new FormData(uploadForm);
+        
+        // Upload files
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                // Redirect to show flash messages
+                window.location.href = '/upload';
+            } else {
+                throw new Error('Upload failed');
+            }
+        })
+        .catch(error => {
+            console.error('Upload error:', error);
+            showAlert('Upload failed. Please try again.', 'danger');
+        })
+        .finally(() => {
+            // Reset form
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i data-feather="upload" class="me-2"></i>Upload Files';
+            progressDiv.style.display = 'none';
+            feather.replace();
+        });
+    }
+    
+    function resetForm() {
+        document.getElementById('uploadForm').reset();
+        document.getElementById('selectedFiles').style.display = 'none';
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('uploadBtn').disabled = true;
+        document.getElementById('filesList').innerHTML = '';
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function showAlert(message, type = 'info') {
+        const alertsContainer = document.getElementById('alerts-container') || document.body;
+        
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        alertsContainer.appendChild(alert);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.classList.remove('show');
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.remove();
+                    }
+                }, 150);
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Sites - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">FTP/SFTP Sites</h1>
+            <a href="{{ url_for('new_site') }}" class="btn btn-primary">
+                <i data-feather="plus" class="me-2"></i>Add New Site
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if sites %}
+    <div class="row">
+        {% for site in sites %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">{{ site.name }}</h5>
+                        <span class="badge protocol-{{ site.protocol }}">{{ site.protocol|upper }}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="text-muted small">
+                            <i data-feather="globe" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                            {{ site.host }}:{{ site.port }}
+                        </div>
+                        <div class="text-muted small">
+                            <i data-feather="user" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                            {{ site.username }}
+                        </div>
+                        <div class="text-muted small">
+                            <i data-feather="folder" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                            {{ site.remote_path }}
+                        </div>
+                        <div class="text-muted small">
+                            <i data-feather="file" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                            {{ site.transfer_type|title }}
+                        </div>
+                    </div>
+                    
+                    <div class="text-muted small mb-3">
+                        Created: {{ site.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </div>
+                    
+                    <!-- Jobs count -->
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i data-feather="briefcase" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                            {{ site.jobs|length }} job(s)
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-transparent">
+                    <div class="table-actions">
+                        <a href="/sites/{{ site.id }}/test" class="btn btn-sm btn-outline-info test-connection" data-site-id="{{ site.id }}">
+                            <i data-feather="wifi" class="me-1"></i>Test
+                        </a>
+                        <a href="{{ url_for('edit_site', site_id=site.id) }}" class="btn btn-sm btn-outline-secondary">
+                            <i data-feather="edit" class="me-1"></i>Edit
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger delete-site" data-site-id="{{ site.id }}" data-site-name="{{ site.name }}">
+                            <i data-feather="trash-2" class="me-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i data-feather="server" class="text-muted mb-3" style="width: 4rem; height: 4rem;"></i>
+                    <h4 class="text-muted">No FTP/SFTP sites configured</h4>
+                    <p class="text-muted">Get started by adding your first FTP or SFTP site.</p>
+                    <a href="{{ url_for('new_site') }}" class="btn btn-primary">
+                        <i data-feather="plus" class="me-2"></i>Add Your First Site
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Quick Stats -->
+{% if sites %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ sites|length }}</h5>
+                <p class="card-text text-muted">Total Sites</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ sites|selectattr('protocol', 'equalto', 'ftp')|list|length }}</h5>
+                <p class="card-text text-muted">FTP Sites</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ sites|selectattr('protocol', 'equalto', 'sftp')|list|length }}</h5>
+                <p class="card-text text-muted">SFTP Sites</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ sites|sum(attribute='jobs')|length if sites else 0 }}</h5>
+                <p class="card-text text-muted">Total Jobs</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/sites.js') }}"></script>
+<script>
+    // Initialize feather icons after content is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+    });
+</script>
+{% endblock %}

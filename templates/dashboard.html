@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">Dashboard</h1>
+            <div class="text-muted">
+                <small>Last updated: <span id="lastUpdated">{{ moment().format('YYYY-MM-DD HH:mm:ss') if moment else 'Now' }}</span></small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-muted">Total Jobs</h5>
+                        <h3 class="mb-0">{{ stats.total_jobs or 0 }}</h3>
+                    </div>
+                    <div class="text-primary">
+                        <i data-feather="briefcase" style="width: 2rem; height: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-muted">Pending</h5>
+                        <h3 class="mb-0">{{ stats.pending_jobs or 0 }}</h3>
+                    </div>
+                    <div class="text-warning">
+                        <i data-feather="clock" style="width: 2rem; height: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-muted">Running</h5>
+                        <h3 class="mb-0">{{ stats.running_jobs or 0 }}</h3>
+                    </div>
+                    <div class="text-info">
+                        <i data-feather="play-circle" style="width: 2rem; height: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card {{ 'danger' if stats.failed_jobs > 0 else 'success' }}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-muted">Failed</h5>
+                        <h3 class="mb-0">{{ stats.failed_jobs or 0 }}</h3>
+                    </div>
+                    <div class="{{ 'text-danger' if stats.failed_jobs > 0 else 'text-success' }}">
+                        <i data-feather="{{ 'x-circle' if stats.failed_jobs > 0 else 'check-circle' }}" style="width: 2rem; height: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Job Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="jobStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Activity (Last 7 Days)</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Jobs</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_jobs %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Job Name</th>
+                                    <th>Site</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Last Run</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in recent_jobs %}
+                                <tr>
+                                    <td>{{ job.name }}</td>
+                                    <td>{{ job.site.name }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ job.job_type|title }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge status-badge status-{{ job.status }}">
+                                            {{ job.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if job.last_run %}
+                                            <small class="text-muted">{{ job.last_run.strftime('%Y-%m-%d %H:%M') }}</small>
+                                        {% else %}
+                                            <small class="text-muted">Never</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i data-feather="inbox" class="text-muted mb-2" style="width: 3rem; height: 3rem;"></i>
+                        <p class="text-muted">No jobs created yet.</p>
+                        <a href="{{ url_for('new_job') }}" class="btn btn-primary">Create First Job</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                    <div id="recentActivity">
+                        {% for log in recent_logs %}
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="flex-shrink-0 me-3">
+                                {% if log.status == 'completed' %}
+                                    <i data-feather="check-circle" class="text-success"></i>
+                                {% elif log.status == 'failed' %}
+                                    <i data-feather="x-circle" class="text-danger"></i>
+                                {% else %}
+                                    <i data-feather="clock" class="text-warning"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">{{ log.job.name }}</div>
+                                <small class="text-muted">
+                                    {{ log.status|title }} • {{ log.start_time.strftime('%H:%M') }}
+                                </small>
+                                {% if log.files_processed %}
+                                    <br><small class="text-muted">{{ log.files_processed }} files processed</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i data-feather="activity" class="text-muted mb-2" style="width: 2rem; height: 2rem;"></i>
+                        <p class="text-muted">No activity yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('new_site') }}" class="btn btn-outline-primary">
+                        <i data-feather="plus" class="me-1"></i>Add Site
+                    </a>
+                    <a href="{{ url_for('new_job') }}" class="btn btn-outline-success">
+                        <i data-feather="plus" class="me-1"></i>Create Job
+                    </a>
+                    <a href="{{ url_for('upload_files') }}" class="btn btn-outline-info">
+                        <i data-feather="upload" class="me-1"></i>Upload Files
+                    </a>
+                    <a href="{{ url_for('settings') }}" class="btn btn-outline-secondary">
+                        <i data-feather="settings" class="me-1"></i>Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+    // Initialize feather icons after content is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+    });
+</script>
+{% endblock %}

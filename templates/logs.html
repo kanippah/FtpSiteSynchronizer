@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Logs - FTP/SFTP Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">System Logs</h1>
+            <div class="d-flex gap-2">
+                <!-- Log Type Filter -->
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="log_type" id="log_all" value="all" {{ 'checked' if log_type == 'all' else '' }}>
+                    <label class="btn btn-outline-secondary" for="log_all">All Logs</label>
+                    
+                    <input type="radio" class="btn-check" name="log_type" id="log_job" value="job" {{ 'checked' if log_type == 'job' else '' }}>
+                    <label class="btn btn-outline-secondary" for="log_job">Job Logs</label>
+                    
+                    <input type="radio" class="btn-check" name="log_type" id="log_system" value="system" {{ 'checked' if log_type == 'system' else '' }}>
+                    <label class="btn btn-outline-secondary" for="log_system">System Logs</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if logs and logs.items %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date/Time</th>
+                                    <th>Type</th>
+                                    <th>Status/Level</th>
+                                    <th>Details</th>
+                                    <th>Duration</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs.items %}
+                                    {% if log_type == 'job' or log_type == 'all' %}
+                                        {% if log.__tablename__ == 'job_logs' %}
+                                        <tr>
+                                            <td>
+                                                <div>{{ log.start_time.strftime('%Y-%m-%d') }}</div>
+                                                <small class="text-muted">{{ log.start_time.strftime('%H:%M:%S') }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary">Job</span>
+                                                <div class="small text-muted">{{ log.job.name if log.job else 'Unknown' }}</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge status-badge status-{{ log.status }}">
+                                                    {% if log.status == 'running' %}
+                                                        <span class="loading-spinner me-1"></span>
+                                                    {% endif %}
+                                                    {{ log.status|title }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    {% if log.files_processed > 0 %}
+                                                        <small class="text-muted">
+                                                            <i data-feather="file" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                                            {{ log.files_processed }} files
+                                                        </small>
+                                                    {% endif %}
+                                                    {% if log.bytes_transferred > 0 %}
+                                                        <small class="text-muted">
+                                                            <i data-feather="hard-drive" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                                            {{ (log.bytes_transferred / 1024 / 1024) | round(2) }} MB
+                                                        </small>
+                                                    {% endif %}
+                                                </div>
+                                                {% if log.error_message %}
+                                                    <small class="text-danger">{{ log.error_message[:100] }}{{ '...' if log.error_message|length > 100 else '' }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if log.end_time %}
+                                                    {% set duration = (log.end_time - log.start_time).total_seconds() %}
+                                                    <small class="text-muted">{{ duration|int }}s</small>
+                                                {% else %}
+                                                    <small class="text-muted">-</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="table-actions">
+                                                    {% if log.log_content %}
+                                                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#logModal{{ log.id }}">
+                                                            <i data-feather="eye" class="me-1"></i>View
+                                                        </button>
+                                                    {% endif %}
+                                                    <button class="btn btn-sm btn-outline-danger delete-log" data-log-id="{{ log.id }}" data-log-type="job">
+                                                        <i data-feather="trash-2" class="me-1"></i>Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endif %}
+                                    
+                                    {% if log_type == 'system' or log_type == 'all' %}
+                                        {% if log.__tablename__ == 'system_logs' %}
+                                        <tr>
+                                            <td>
+                                                <div>{{ log.created_at.strftime('%Y-%m-%d') }}</div>
+                                                <small class="text-muted">{{ log.created_at.strftime('%H:%M:%S') }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">System</span>
+                                                {% if log.component %}
+                                                    <div class="small text-muted">{{ log.component }}</div>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if log.level == 'info' else 'warning' if log.level == 'warning' else 'danger' }}">
+                                                    {{ log.level|title }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div>{{ log.message[:100] }}{{ '...' if log.message|length > 100 else '' }}</div>
+                                            </td>
+                                            <td>-</td>
+                                            <td>
+                                                <div class="table-actions">
+                                                    <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#systemLogModal{{ log.id }}">
+                                                        <i data-feather="eye" class="me-1"></i>View
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger delete-log" data-log-id="{{ log.id }}" data-log-type="system">
+                                                        <i data-feather="trash-2" class="me-1"></i>Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if logs.pages > 1 %}
+    <div class="row mt-3">
+        <div class="col-12">
+            <nav aria-label="Log pagination">
+                <ul class="pagination justify-content-center">
+                    {% if logs.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('logs', page=logs.prev_num, type=log_type) }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num != logs.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('logs', page=page_num, type=log_type) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if logs.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('logs', page=logs.next_num, type=log_type) }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+{% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i data-feather="file-text" class="text-muted mb-3" style="width: 4rem; height: 4rem;"></i>
+                    <h4 class="text-muted">No logs available</h4>
+                    <p class="text-muted">Logs will appear here as jobs are executed and system events occur.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Log Detail Modals -->
+{% if logs and logs.items %}
+    {% for log in logs.items %}
+        {% if log.__tablename__ == 'job_logs' and log.log_content %}
+        <!-- Job Log Modal -->
+        <div class="modal fade" id="logModal{{ log.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Job Log - {{ log.job.name if log.job else 'Unknown' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Started:</strong> {{ log.start_time.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Status:</strong> 
+                                <span class="badge status-badge status-{{ log.status }}">{{ log.status|title }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if log.files_processed > 0 or log.bytes_transferred > 0 %}
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Files Processed:</strong> {{ log.files_processed }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Bytes Transferred:</strong> {{ (log.bytes_transferred / 1024 / 1024) | round(2) }} MB
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="log-viewer custom-scrollbar">
+                            {{ log.log_content|replace('\n', '<br>')|safe }}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if log.__tablename__ == 'system_logs' %}
+        <!-- System Log Modal -->
+        <div class="modal fade" id="systemLogModal{{ log.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">System Log - {{ log.component or 'System' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Time:</strong> {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Level:</strong> 
+                                <span class="badge bg-{{ 'success' if log.level == 'info' else 'warning' if log.level == 'warning' else 'danger' }}">
+                                    {{ log.level|title }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="log-viewer custom-scrollbar">
+                            {{ log.message|replace('\n', '<br>')|safe }}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize feather icons after content is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        
+        // Handle log type filter
+        const logTypeRadios = document.querySelectorAll('input[name="log_type"]');
+        logTypeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    window.location.href = `{{ url_for('logs') }}?type=${this.value}`;
+                }
+            });
+        });
+        
+        // Handle log deletion
+        const deleteButtons = document.querySelectorAll('.delete-log');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const logId = this.dataset.logId;
+                const logType = this.dataset.logType;
+                
+                if (confirm('Are you sure you want to delete this log entry?')) {
+                    deleteLog(logId, logType);
+                }
+            });
+        });
+    });
+    
+    function deleteLog(logId, logType) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/logs/${logId}/delete`;
+        
+        const logTypeInput = document.createElement('input');
+        logTypeInput.type = 'hidden';
+        logTypeInput.name = 'log_type';
+        logTypeInput.value = logType;
+        form.appendChild(logTypeInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+</script>
+{% endblock %}

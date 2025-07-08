@@ -1,0 +1,247 @@
+/* Custom styles for FTP/SFTP Manager */
+
+/* Status badges */
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.status-pending {
+    background-color: var(--bs-warning);
+    color: var(--bs-dark);
+}
+
+.status-running {
+    background-color: var(--bs-info);
+    color: var(--bs-white);
+}
+
+.status-completed {
+    background-color: var(--bs-success);
+    color: var(--bs-white);
+}
+
+.status-failed {
+    background-color: var(--bs-danger);
+    color: var(--bs-white);
+}
+
+/* Card hover effects */
+.card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Protocol badges */
+.protocol-ftp {
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
+}
+
+.protocol-sftp {
+    background-color: var(--bs-secondary);
+    color: var(--bs-white);
+}
+
+/* Dashboard stats */
+.stats-card {
+    border-left: 4px solid var(--bs-primary);
+}
+
+.stats-card.warning {
+    border-left-color: var(--bs-warning);
+}
+
+.stats-card.danger {
+    border-left-color: var(--bs-danger);
+}
+
+.stats-card.success {
+    border-left-color: var(--bs-success);
+}
+
+.stats-card.info {
+    border-left-color: var(--bs-info);
+}
+
+/* File upload drop zone */
+.file-drop-zone {
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--bs-light);
+    transition: all 0.3s ease;
+}
+
+.file-drop-zone:hover {
+    border-color: var(--bs-primary);
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+.file-drop-zone.dragover {
+    border-color: var(--bs-success);
+    background-color: var(--bs-success-bg-subtle);
+}
+
+/* Log viewer */
+.log-viewer {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    border-radius: 0.375rem;
+}
+
+.log-viewer .log-entry {
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--bs-gray-600);
+}
+
+.log-viewer .log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-viewer .log-timestamp {
+    color: var(--bs-gray-400);
+    font-size: 0.75rem;
+}
+
+.log-viewer .log-level-info {
+    color: var(--bs-info);
+}
+
+.log-viewer .log-level-warning {
+    color: var(--bs-warning);
+}
+
+.log-viewer .log-level-error {
+    color: var(--bs-danger);
+}
+
+/* Form enhancements */
+.form-section {
+    background-color: var(--bs-gray-100);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section h5 {
+    color: var(--bs-primary);
+    margin-bottom: 1rem;
+}
+
+/* Table enhancements */
+.table-actions {
+    white-space: nowrap;
+}
+
+.table-actions .btn {
+    margin-right: 0.25rem;
+}
+
+.table-actions .btn:last-child {
+    margin-right: 0;
+}
+
+/* Progress bars */
+.progress-small {
+    height: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .stats-card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid var(--bs-border-color);
+    border-top: 2px solid var(--bs-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Chart containers */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-bottom: 1rem;
+}
+
+/* Alert enhancements */
+.alert {
+    border-left: 4px solid transparent;
+}
+
+.alert-primary {
+    border-left-color: var(--bs-primary);
+}
+
+.alert-secondary {
+    border-left-color: var(--bs-secondary);
+}
+
+.alert-success {
+    border-left-color: var(--bs-success);
+}
+
+.alert-danger {
+    border-left-color: var(--bs-danger);
+}
+
+.alert-warning {
+    border-left-color: var(--bs-warning);
+}
+
+.alert-info {
+    border-left-color: var(--bs-info);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bs-secondary) var(--bs-light);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--bs-light);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--bs-secondary);
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary-dark);
+}
