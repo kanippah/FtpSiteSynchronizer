@@ -270,13 +270,18 @@ def run_job(job_id):
         
         job = Job.query.get_or_404(job_id)
         
-        # Execute job in background
-        scheduler.add_job(
-            func=execute_job,
-            args=[job_id],
-            id=f'manual_{job_id}_{datetime.now().timestamp()}',
-            replace_existing=True
-        )
+        # Execute job immediately in background thread
+        import threading
+        
+        def run_job_thread():
+            try:
+                execute_job(job_id)
+            except Exception as e:
+                logger.error(f"Error in job thread: {str(e)}")
+        
+        thread = threading.Thread(target=run_job_thread)
+        thread.daemon = True
+        thread.start()
         
         flash(f'Job "{job.name}" started!', 'success')
         log_system_message('info', f'Job "{job.name}" started manually', 'jobs')

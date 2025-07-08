@@ -32,9 +32,11 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # Initialize the app with the extension
 db.init_app(app)
 
-# Configure APScheduler
+# Configure APScheduler with memory store to avoid pickle issues
+from apscheduler.jobstores.memory import MemoryJobStore
+
 jobstores = {
-    'default': SQLAlchemyJobStore(url=app.config["SQLALCHEMY_DATABASE_URI"])
+    'default': MemoryJobStore()
 }
 executors = {
     'default': ThreadPoolExecutor(20)

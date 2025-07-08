@@ -23,9 +23,9 @@ def schedule_job(job):
             pass
         
         if job.schedule_type == 'one_time':
-            # Ensure datetime is naive (no timezone info) to avoid pickle issues
+            # Use naive datetime to avoid timezone issues
             run_date = job.schedule_datetime
-            if run_date.tzinfo is not None:
+            if hasattr(run_date, 'tzinfo') and run_date.tzinfo is not None:
                 run_date = run_date.replace(tzinfo=None)
             
             scheduler.add_job(
@@ -59,7 +59,10 @@ def schedule_job(job):
         
     except Exception as e:
         logger.error(f"Error scheduling job {job.name}: {str(e)}")
-        raise
+        # Don't raise the exception, just log it
+        return False
+    
+    return True
 
 def execute_job(job_id):
     """Execute a job"""
@@ -323,10 +326,24 @@ def reschedule_existing_jobs():
             
             for job in active_jobs:
                 try:
-                    schedule_job(job)
-                    logger.info(f"Rescheduled job: {job.name}")
+                    # Reset running jobs to pending
+                    if job.status == 'running':
+                        job.status = 'pending'
+                        db.session.commit()
+                    
+                    # Try to schedule the job
+                    success = schedule_job(job)
+                    if success:
+                        logger.info(f"Rescheduled job: {job.name}")
+                    else:
+                        logger.warning(f"Failed to reschedule job {job.name}, keeping as pending")
+                        job.status = 'pending'
+                        db.session.commit()
                 except Exception as e:
                     logger.error(f"Error rescheduling job {job.name}: {str(e)}")
+                    # Set job status to pending if scheduling fails
+                    job.status = 'pending'
+                    db.session.commit()
                     
         except Exception as e:
             logger.error(f"Error rescheduling jobs: {str(e)}")
