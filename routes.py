@@ -379,26 +379,83 @@ def logs():
                 page=page, per_page=per_page, error_out=False
             )
         else:
-            # For combined view, use job logs as primary
-            query = JobLog.query
+            # For combined view, create a mixed dataset
+            # Get both job logs and system logs, then combine them
+            job_logs = []
+            system_logs = []
             
-            # Apply status filter
+            # Get job logs with filters
+            job_query = JobLog.query
             if status_filter != 'all':
-                query = query.filter(JobLog.status == status_filter)
-            
-            # Apply search filter
+                job_query = job_query.filter(JobLog.status == status_filter)
             if search_query:
-                query = query.join(Job).filter(
+                job_query = job_query.join(Job).filter(
                     db.or_(
                         Job.name.ilike(f'%{search_query}%'),
                         JobLog.error_message.ilike(f'%{search_query}%'),
                         JobLog.log_content.ilike(f'%{search_query}%')
                     )
                 )
+            job_logs = job_query.all()
             
-            logs = query.order_by(JobLog.start_time.desc()).paginate(
-                page=page, per_page=per_page, error_out=False
-            )
+            # Get system logs with filters  
+            system_query = SystemLog.query
+            if level_filter != 'all':
+                system_query = system_query.filter(SystemLog.level == level_filter)
+            if search_query:
+                system_query = system_query.filter(
+                    db.or_(
+                        SystemLog.message.ilike(f'%{search_query}%'),
+                        SystemLog.component.ilike(f'%{search_query}%')
+                    )
+                )
+            system_logs = system_query.all()
+            
+            # Combine and sort by timestamp
+            combined_logs = []
+            for log in job_logs:
+                combined_logs.append({
+                    'log': log,
+                    'timestamp': log.start_time,
+                    'type': 'job'
+                })
+            for log in system_logs:
+                combined_logs.append({
+                    'log': log,
+                    'timestamp': log.created_at,
+                    'type': 'system'
+                })
+            
+            # Sort by timestamp descending
+            combined_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+            
+            # Manual pagination
+            total = len(combined_logs)
+            start = (page - 1) * per_page
+            end = start + per_page
+            items = combined_logs[start:end]
+            
+            # Create a mock pagination object
+            class MockPagination:
+                def __init__(self, items, page, per_page, total):
+                    self.items = [item['log'] for item in items]
+                    self.page = page
+                    self.per_page = per_page
+                    self.total = total
+                    self.pages = (total + per_page - 1) // per_page
+                    self.has_prev = page > 1
+                    self.has_next = page < self.pages
+                    self.prev_num = page - 1 if self.has_prev else None
+                    self.next_num = page + 1 if self.has_next else None
+                    
+                def iter_pages(self, left_edge=2, right_edge=2, left_current=2, right_current=3):
+                    for num in range(1, self.pages + 1):
+                        if num <= left_edge or (self.pages - num) < right_edge or abs(num - self.page) < left_current:
+                            yield num
+                        elif abs(num - self.page) == left_current:
+                            yield None
+            
+            logs = MockPagination(items, page, per_page, total)
         
         return render_template('logs.html', 
                              logs=logs, 
