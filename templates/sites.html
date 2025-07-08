@@ -121,7 +121,7 @@
     <div class="col-md-3">
         <div class="card">
             <div class="card-body text-center">
-                <h5 class="card-title">{{ sites|sum(attribute='jobs')|length if sites else 0 }}</h5>
+                <h5 class="card-title">{{ (sites|map(attribute='jobs')|map('length')|sum) if sites else 0 }}</h5>
                 <p class="card-text text-muted">Total Jobs</p>
             </div>
         </div>
