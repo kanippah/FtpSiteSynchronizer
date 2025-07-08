@@ -11,10 +11,82 @@
 
 .form-control, .form-select, .form-check-input {
     border-color: white !important;
+    background-color: white !important;
+    color: #212529 !important;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: white !important;
+    color: #212529 !important;
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+.form-control::placeholder {
+    color: #6c757d !important;
+}
+
+/* Fix select dropdown options */
+.form-select option {
+    background-color: white !important;
+    color: #212529 !important;
+}
+
+/* Fix form labels */
+.form-label {
+    color: var(--bs-light) !important;
+}
+
+/* Fix input groups */
+.input-group-text {
+    background-color: white !important;
+    color: #212529 !important;
+    border-color: white !important;
+}
+
+/* Fix form check text */
+.form-check-label {
+    color: var(--bs-light) !important;
+}
+
+/* Fix required asterisks */
+.text-danger {
+    color: #ff6b6b !important;
+}
+
+/* Fix text color in form sections */
+.form-section .form-text, .form-section small {
+    color: #adb5bd !important;
+}
+
+/* Fix card text in forms */
+.card-body p, .card-body span {
+    color: var(--bs-light) !important;
 }
 
 .btn {
     border-color: white !important;
+}
+
+/* Ensure button text remains readable */
+.btn-primary {
+    background-color: var(--bs-primary) !important;
+    color: white !important;
+}
+
+.btn-secondary {
+    background-color: var(--bs-secondary) !important;
+    color: white !important;
+}
+
+.btn-outline-primary {
+    color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+}
+
+.btn-outline-secondary {
+    color: var(--bs-secondary) !important;
+    border-color: var(--bs-secondary) !important;
 }
 
 .alert {
@@ -112,7 +184,8 @@
     border-radius: 0.5rem;
     padding: 2rem;
     text-align: center;
-    background-color: var(--bs-light);
+    background-color: white !important;
+    color: #212529 !important;
     transition: all 0.3s ease;
 }
 
@@ -168,14 +241,15 @@
 
 /* Form enhancements */
 .form-section {
-    background-color: var(--bs-gray-100);
+    background-color: rgba(255, 255, 255, 0.1) !important;
     padding: 1.5rem;
     border-radius: 0.5rem;
     margin-bottom: 1.5rem;
+    border: 1px solid white !important;
 }
 
 .form-section h5 {
-    color: var(--bs-primary);
+    color: var(--bs-light) !important;
     margin-bottom: 1rem;
 }
 
