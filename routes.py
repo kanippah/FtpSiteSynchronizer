@@ -330,26 +330,88 @@ def logs():
     try:
         page = request.args.get('page', 1, type=int)
         log_type = request.args.get('type', 'all')
+        per_page = request.args.get('per_page', 25, type=int)
+        level_filter = request.args.get('level', 'all')
+        status_filter = request.args.get('status', 'all')
+        search_query = request.args.get('search', '')
+        
+        # Validate per_page
+        if per_page not in [10, 25, 50, 100]:
+            per_page = 25
         
         if log_type == 'job':
-            logs = JobLog.query.order_by(JobLog.start_time.desc()).paginate(
-                page=page, per_page=50, error_out=False
+            query = JobLog.query
+            
+            # Apply status filter for job logs
+            if status_filter != 'all':
+                query = query.filter(JobLog.status == status_filter)
+            
+            # Apply search filter for job logs
+            if search_query:
+                query = query.join(Job).filter(
+                    db.or_(
+                        Job.name.ilike(f'%{search_query}%'),
+                        JobLog.error_message.ilike(f'%{search_query}%'),
+                        JobLog.log_content.ilike(f'%{search_query}%')
+                    )
+                )
+            
+            logs = query.order_by(JobLog.start_time.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
             )
         elif log_type == 'system':
-            logs = SystemLog.query.order_by(SystemLog.created_at.desc()).paginate(
-                page=page, per_page=50, error_out=False
+            query = SystemLog.query
+            
+            # Apply level filter for system logs
+            if level_filter != 'all':
+                query = query.filter(SystemLog.level == level_filter)
+            
+            # Apply search filter for system logs
+            if search_query:
+                query = query.filter(
+                    db.or_(
+                        SystemLog.message.ilike(f'%{search_query}%'),
+                        SystemLog.component.ilike(f'%{search_query}%')
+                    )
+                )
+            
+            logs = query.order_by(SystemLog.created_at.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
             )
         else:
-            # Combine both types (simplified for now)
-            logs = JobLog.query.order_by(JobLog.start_time.desc()).paginate(
-                page=page, per_page=50, error_out=False
+            # For combined view, use job logs as primary
+            query = JobLog.query
+            
+            # Apply status filter
+            if status_filter != 'all':
+                query = query.filter(JobLog.status == status_filter)
+            
+            # Apply search filter
+            if search_query:
+                query = query.join(Job).filter(
+                    db.or_(
+                        Job.name.ilike(f'%{search_query}%'),
+                        JobLog.error_message.ilike(f'%{search_query}%'),
+                        JobLog.log_content.ilike(f'%{search_query}%')
+                    )
+                )
+            
+            logs = query.order_by(JobLog.start_time.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
             )
         
-        return render_template('logs.html', logs=logs, log_type=log_type)
+        return render_template('logs.html', 
+                             logs=logs, 
+                             log_type=log_type,
+                             per_page=per_page,
+                             level_filter=level_filter,
+                             status_filter=status_filter,
+                             search_query=search_query)
     except Exception as e:
         logger.error(f"Error loading logs: {str(e)}")
         flash(f'Error loading logs: {str(e)}', 'error')
-        return render_template('logs.html', logs=None, log_type='all')
+        return render_template('logs.html', logs=None, log_type='all', per_page=25, 
+                             level_filter='all', status_filter='all', search_query='')
 
 @app.route('/logs/<int:log_id>/delete', methods=['POST'])
 def delete_log(log_id):

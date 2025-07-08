@@ -361,3 +361,132 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--bs-secondary-dark);
 }
+
+/* Enhanced Log Filter Styles */
+.filter-section {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-section .card-body {
+    padding: 1.5rem;
+}
+
+.filter-section .form-label {
+    font-weight: 600;
+    color: var(--bs-light) !important;
+    margin-bottom: 0.5rem;
+}
+
+.filter-section .btn-group {
+    width: 100%;
+}
+
+.filter-section .btn-group .btn {
+    flex: 1;
+    font-size: 0.875rem;
+}
+
+.filter-section .input-group .btn {
+    border-left: none;
+}
+
+.filter-section .form-select {
+    font-size: 0.875rem;
+}
+
+/* Pagination enhancements */
+.pagination-info {
+    font-size: 0.875rem;
+    color: var(--bs-light);
+}
+
+.pagination .page-link {
+    background-color: transparent;
+    color: var(--bs-light);
+    border: 1px solid white;
+}
+
+.pagination .page-link:hover {
+    background-color: var(--bs-primary);
+    color: white;
+    border-color: var(--bs-primary);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: var(--bs-gray-600);
+    background-color: transparent;
+    border-color: var(--bs-gray-600);
+}
+
+/* Log table enhancements */
+.logs-table .badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.logs-table .table-actions .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.logs-table .text-muted {
+    color: var(--bs-gray-400) !important;
+}
+
+/* Search input enhancements */
+.search-input-group .form-control {
+    border-right: none;
+}
+
+.search-input-group .btn {
+    border-left: none;
+    background-color: white;
+    color: #6c757d;
+}
+
+.search-input-group .btn:hover {
+    background-color: var(--bs-gray-200);
+    color: var(--bs-dark);
+}
+
+/* Status indicator improvements */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.status-indicator .loading-spinner {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-width: 2px;
+}
+
+/* Filter form responsive adjustments */
+@media (max-width: 768px) {
+    .filter-section .row > div {
+        margin-bottom: 1rem;
+    }
+    
+    .filter-section .btn-group {
+        flex-direction: column;
+    }
+    
+    .filter-section .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.25rem;
+    }
+    
+    .pagination-info {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+}
