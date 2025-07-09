@@ -75,7 +75,7 @@
                                         <tr>
                                             <td>
                                                 {% if item.is_directory %}
-                                                    <a href="{{ url_for('browse_site', site_id=site.id, remote_path=item.path) }}" 
+                                                    <a href="{{ url_for('browse_site', site_id=site.id, remote_path=item.path.lstrip('/')) }}" 
                                                        class="text-decoration-none">
                                                         <i data-feather="folder" class="text-primary"></i>
                                                         {{ item.name }}
@@ -102,12 +102,12 @@
                                                             <button type="button" 
                                                                     class="btn btn-outline-info btn-sm preview-btn" 
                                                                     data-site-id="{{ site.id }}" 
-                                                                    data-file-path="{{ item.path }}"
+                                                                    data-file-path="{{ item.path.lstrip('/') }}"
                                                                     data-bs-toggle="modal" 
                                                                     data-bs-target="#previewModal">
                                                                 <i data-feather="eye"></i> Preview
                                                             </button>
-                                                            <a href="{{ url_for('download_file', site_id=site.id, remote_path=item.path) }}" 
+                                                            <a href="{{ url_for('download_file', site_id=site.id, remote_path=item.path.lstrip('/')) }}" 
                                                                class="btn btn-outline-success btn-sm">
                                                                 <i data-feather="download"></i> Download
                                                             </a>
@@ -188,9 +188,17 @@
                     </div>
                 `;
                 
-                // Fetch preview
-                fetch(`/api/browser/${siteId}/preview/${filePath}`)
-                    .then(response => response.json())
+                // Fetch preview with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
+                fetch(`/api/browser/${siteId}/preview/${filePath}`, {
+                    signal: controller.signal
+                })
+                    .then(response => {
+                        clearTimeout(timeoutId);
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             if (data.is_text) {
@@ -218,10 +226,15 @@
                         feather.replace();
                     })
                     .catch(error => {
+                        clearTimeout(timeoutId);
+                        let errorMessage = error.message;
+                        if (error.name === 'AbortError') {
+                            errorMessage = 'Request timed out - file may be too large or server is slow';
+                        }
                         previewContent.innerHTML = `
                             <div class="alert alert-danger" role="alert">
                                 <i data-feather="alert-circle"></i>
-                                Error loading preview: ${error.message}
+                                Error loading preview: ${errorMessage}
                             </div>
                         `;
                         feather.replace();

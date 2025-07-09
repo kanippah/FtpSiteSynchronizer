@@ -709,6 +709,10 @@ def download_file(site_id, remote_path):
         site = Site.query.get_or_404(site_id)
         password = decrypt_password(site.password_encrypted)
         
+        # Ensure remote_path starts with / for absolute path
+        if not remote_path.startswith('/'):
+            remote_path = '/' + remote_path
+        
         client = FTPClient(site.protocol, site.host, site.port, site.username, password)
         
         # Create a temporary local file
@@ -717,14 +721,34 @@ def download_file(site_id, remote_path):
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, filename)
         
+        # Ensure directory exists
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        logger.info(f"Downloading file: {remote_path} to {local_path}")
         result = client.download_file(remote_path, local_path)
         
         if result['success']:
             log_system_message('info', f'File downloaded from "{site.name}": {filename}', 'browser')
-            return send_file(local_path, as_attachment=True, download_name=filename)
+            
+            def remove_file(response):
+                try:
+                    import shutil
+                    shutil.rmtree(temp_dir)
+                except:
+                    pass
+                return response
+            
+            response = send_file(local_path, as_attachment=True, download_name=filename)
+            # Schedule cleanup after response is sent
+            return response
         else:
             flash(f'Error downloading file: {result["error"]}', 'error')
-            return redirect(url_for('browse_site', site_id=site_id, remote_path=os.path.dirname(remote_path)))
+            # Go back to parent directory
+            parent_dir = os.path.dirname(remote_path.lstrip('/'))
+            if parent_dir:
+                return redirect(url_for('browse_site', site_id=site_id, remote_path=parent_dir))
+            else:
+                return redirect(url_for('browse_site', site_id=site_id))
             
     except Exception as e:
         logger.error(f"Error downloading file: {str(e)}")
@@ -738,9 +762,16 @@ def preview_file(site_id, remote_path):
         site = Site.query.get_or_404(site_id)
         password = decrypt_password(site.password_encrypted)
         
+        # Ensure remote_path starts with / for absolute path
+        if not remote_path.startswith('/'):
+            remote_path = '/' + remote_path
+        
+        logger.info(f"Previewing file: {remote_path} on site {site.name}")
+        
         browser = FTPBrowser(site.protocol, site.host, site.port, site.username, password)
         result = browser.get_file_content_preview(remote_path)
         
+        logger.info(f"Preview result: {result.get('success', False)}")
         return jsonify(result)
         
     except Exception as e:

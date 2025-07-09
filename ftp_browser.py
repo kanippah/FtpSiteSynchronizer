@@ -55,7 +55,11 @@ class FTPBrowser(FTPClient):
                             except:
                                 modified = None
                             
-                            full_path = os.path.join(current_path, name).replace('\\', '/')
+                            # Construct proper path
+                            if current_path == '/' or current_path == '.':
+                                full_path = f'/{name}'
+                            else:
+                                full_path = f"{current_path.rstrip('/')}/{name}"
                             
                             items.append({
                                 'name': name,
@@ -82,7 +86,7 @@ class FTPBrowser(FTPClient):
                                     'permissions': '-',
                                     'modified': '',
                                     'modified_formatted': '',
-                                    'path': os.path.join(current_path, name).replace('\\', '/'),
+                                    'path': f"{current_path.rstrip('/')}/{name}" if current_path not in ['/', '.'] else f'/{name}',
                                     'type': 'file'
                                 })
                     except Exception as inner_e:
@@ -115,7 +119,11 @@ class FTPBrowser(FTPClient):
                         if hasattr(file_attr, 'st_mtime'):
                             modified = datetime.fromtimestamp(file_attr.st_mtime)
                         
-                        full_path = os.path.join(current_path, name).replace('\\', '/')
+                        # Construct proper path
+                        if current_path == '/' or current_path == '.':
+                            full_path = f'/{name}'
+                        else:
+                            full_path = f"{current_path.rstrip('/')}/{name}"
                         
                         items.append({
                             'name': name,
@@ -177,24 +185,40 @@ class FTPBrowser(FTPClient):
                 
                 try:
                     self.connection.retrbinary(f'RETR {remote_path}', store_chunk)
-                except:
-                    pass  # File might be too large or binary
+                except Exception as e:
+                    self.disconnect()
+                    return {'success': False, 'error': f'Failed to retrieve file: {str(e)}'}
                     
             elif self.protocol == 'sftp':
                 try:
                     with self.connection.open(remote_path, 'rb') as remote_file:
-                        content.write(remote_file.read(max_size))
-                except:
-                    pass  # File might be too large or binary
+                        chunk = remote_file.read(max_size)
+                        content.write(chunk)
+                except Exception as e:
+                    self.disconnect()
+                    return {'success': False, 'error': f'Failed to retrieve file: {str(e)}'}
             
             self.disconnect()
             
+            # Check if we got any content
+            content_bytes = content.getvalue()
+            if not content_bytes:
+                return {'success': False, 'error': 'File is empty or could not be read'}
+            
             # Try to decode as text
             try:
-                text_content = content.getvalue().decode('utf-8')
+                text_content = content_bytes.decode('utf-8')
                 return {'success': True, 'content': text_content, 'is_text': True}
-            except:
-                return {'success': True, 'content': '[Binary file]', 'is_text': False}
+            except UnicodeDecodeError:
+                # Try other encodings
+                for encoding in ['latin1', 'ascii', 'utf-16']:
+                    try:
+                        text_content = content_bytes.decode(encoding)
+                        return {'success': True, 'content': text_content, 'is_text': True}
+                    except:
+                        continue
+                # If all encodings fail, it's likely a binary file
+                return {'success': True, 'content': '[Binary file - cannot preview as text]', 'is_text': False}
                 
         except Exception as e:
             self.disconnect()

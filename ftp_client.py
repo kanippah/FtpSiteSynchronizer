@@ -18,18 +18,25 @@ class FTPClient:
         self.username = username
         self.password = password
         self.connection = None
+        self.transport = None
         
     def connect(self):
         """Establish connection"""
         try:
             if self.protocol == 'ftp':
                 self.connection = ftplib.FTP()
-                self.connection.connect(self.host, self.port)
+                # Set timeout for FTP connections
+                self.connection.connect(self.host, self.port, timeout=30)
                 self.connection.login(self.username, self.password)
+                # Set passive mode for better firewall compatibility
+                self.connection.set_pasv(True)
             elif self.protocol == 'sftp':
                 transport = paramiko.Transport((self.host, self.port))
-                transport.connect(username=self.username, password=self.password)
+                # Set timeout for SFTP connections
+                transport.set_keepalive(30)
+                transport.connect(username=self.username, password=self.password, timeout=30)
                 self.connection = paramiko.SFTPClient.from_transport(transport)
+                self.transport = transport  # Keep reference for cleanup
             else:
                 raise ValueError(f"Unsupported protocol: {self.protocol}")
             
@@ -46,6 +53,9 @@ class FTPClient:
                     self.connection.quit()
                 elif self.protocol == 'sftp':
                     self.connection.close()
+                    if hasattr(self, 'transport') and self.transport:
+                        self.transport.close()
+            self.connection = None
         except Exception as e:
             logger.error(f"Error disconnecting: {str(e)}")
     
@@ -127,15 +137,36 @@ class FTPClient:
                 return {'success': False, 'error': 'Connection failed'}
             
             # Create local directory if it doesn't exist
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            local_dir = os.path.dirname(local_path)
+            if local_dir:
+                os.makedirs(local_dir, exist_ok=True)
             
             if self.protocol == 'ftp':
-                with open(local_path, 'wb') as local_file:
-                    self.connection.retrbinary(f'RETR {remote_path}', local_file.write)
+                try:
+                    with open(local_path, 'wb') as local_file:
+                        self.connection.retrbinary(f'RETR {remote_path}', local_file.write)
+                except Exception as e:
+                    self.disconnect()
+                    # Try to provide more specific error information
+                    if "550" in str(e):
+                        return {'success': False, 'error': f'File not found or access denied: {remote_path}'}
+                    elif "426" in str(e):
+                        return {'success': False, 'error': f'Connection closed during transfer: {remote_path}'}
+                    else:
+                        return {'success': False, 'error': f'Failed to download {remote_path}: {str(e)}'}
+                        
             elif self.protocol == 'sftp':
-                self.connection.get(remote_path, local_path)
+                try:
+                    self.connection.get(remote_path, local_path)
+                except Exception as e:
+                    self.disconnect()
+                    return {'success': False, 'error': f'Failed to download {remote_path}: {str(e)}'}
             
             self.disconnect()
+            
+            # Check if file was actually downloaded
+            if not os.path.exists(local_path):
+                return {'success': False, 'error': f'Download failed - file not created locally'}
             
             # Get file size
             file_size = os.path.getsize(local_path)
