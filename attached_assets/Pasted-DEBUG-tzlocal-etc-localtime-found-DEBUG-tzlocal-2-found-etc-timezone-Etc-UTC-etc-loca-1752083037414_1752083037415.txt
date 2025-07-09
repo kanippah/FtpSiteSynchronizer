@@ -1,0 +1,88 @@
+DEBUG:tzlocal:/etc/localtime found
+DEBUG:tzlocal:2 found:
+ {'/etc/timezone': 'Etc/UTC', '/etc/localtime is a symlink to': 'Etc/UTC'}
+Traceback (most recent call last):
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InsufficientPrivilege: permission denied for schema public
+LINE 2: CREATE TABLE sites (
+                     ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+  File "/home/ftpmanager/ftpmanager/main.py", line 1, in <module>
+    from app import app
+  File "/home/ftpmanager/ftpmanager/app.py", line 56, in <module>
+    db.create_all()
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/flask_sqlalchemy/extension.py", line 900, in create_all
+    self._call_for_binds(bind_key, "create_all")
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/flask_sqlalchemy/extension.py", line 881, in _call_for_binds
+    getattr(metadata, op_name)(bind=engine)
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/sql/schema.py", line 5924, in create_all
+    bind._run_ddl_visitor(
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3248, in _run_ddl_visitor
+    conn._run_ddl_visitor(visitorcallable, element, **kwargs)
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2455, in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/sql/visitors.py", line 664, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/sql/ddl.py", line 982, in visit_metadata
+    self.traverse_single(
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/sql/visitors.py", line 664, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/sql/ddl.py", line 1020, in visit_table
+    )._invoke_with(self.connection)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/sql/ddl.py", line 321, in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1415, in execute
+    return meth(
+           ^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/sql/ddl.py", line 187, in _execute_on_connection
+    return connection._execute_ddl(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1526, in _execute_ddl
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1842, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1982, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2351, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.InsufficientPrivilege) permission denied for schema public
+LINE 2: CREATE TABLE sites (
+                     ^
+
+[SQL:
+CREATE TABLE sites (
+        id SERIAL NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        protocol VARCHAR(10) NOT NULL,
+        host VARCHAR(255) NOT NULL,
+        port INTEGER,
+        username VARCHAR(100) NOT NULL,
+        password_encrypted BYTEA NOT NULL,
+        remote_path VARCHAR(500),
+        transfer_type VARCHAR(20),
+        created_at TIMESTAMP WITHOUT TIME ZONE,
+        updated_at TIMESTAMP WITHOUT TIME ZONE,
+        PRIMARY KEY (id)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/f405)
