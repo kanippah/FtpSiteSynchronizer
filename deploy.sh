@@ -43,8 +43,12 @@ generate_password() {
     openssl rand -base64 32 | tr -d "=+/" | cut -c1-25
 }
 
-# Function to generate Fernet encryption key
+# Function to generate Fernet encryption key (will install cryptography if needed)
 generate_fernet_key() {
+    # Install cryptography if not available
+    if ! python3 -c "import cryptography" 2>/dev/null; then
+        pip3 install --break-system-packages cryptography
+    fi
     python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 }
 
@@ -66,9 +70,10 @@ if [ -z "$GITHUB_REPO" ]; then
     fi
 fi
 
-# Generate secure passwords
+# Generate secure passwords and keys
+print_status "Generating secure credentials..."
 DB_PASSWORD=$(generate_password)
-SESSION_SECRET=$(generate_password)$(generate_password)
+SESSION_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-50)
 ENCRYPTION_KEY=$(generate_fernet_key)
 ENCRYPTION_PASSWORD=$(generate_password)
 
@@ -101,9 +106,6 @@ apt install -y \
     postgresql-server-dev-all \
     libpq-dev
 
-# Install cryptography for key generation
-pip3 install cryptography
-
 print_success "System dependencies installed"
 
 # Step 2: PostgreSQL setup
@@ -120,13 +122,15 @@ ALTER USER $DB_USER CREATEDB;
 \q
 EOF
 
-# Connect to the specific database and grant schema permissions
+# Connect to the specific database and grant comprehensive schema permissions
 sudo -u postgres psql -d $DB_NAME <<EOF
 GRANT ALL ON SCHEMA public TO $DB_USER;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $DB_USER;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $DB_USER;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $DB_USER;
 \q
 EOF
 
@@ -191,12 +195,30 @@ print_success "Environment configuration created"
 
 # Step 7: Initialize database
 print_status "Initializing application database..."
+# Test database connection first
+sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && export \$(cat .env | xargs) && python3 -c \"
+import psycopg2
+import os
+try:
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    conn.close()
+    print('Database connection test successful')
+except Exception as e:
+    print(f'Database connection failed: {e}')
+    exit(1)
+\""
+
+# Initialize database tables
 sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && export \$(cat .env | xargs) && python3 -c \"
 from main import app
 from models import db
 with app.app_context():
-    db.create_all()
-    print('Database initialized successfully')
+    try:
+        db.create_all()
+        print('Database initialized successfully')
+    except Exception as e:
+        print(f'Database initialization failed: {e}')
+        exit(1)
 \""
 
 print_success "Database initialized"
@@ -218,6 +240,14 @@ print_success "Self-signed SSL certificate created"
 
 # Step 9: Supervisor configuration
 print_status "Configuring Supervisor..."
+# Ensure supervisor directories exist
+mkdir -p /etc/supervisor/conf.d
+mkdir -p /var/log/supervisor
+
+# Start supervisor service
+systemctl start supervisor
+systemctl enable supervisor
+
 tee /etc/supervisor/conf.d/ftpmanager.conf > /dev/null <<EOF
 [program:ftpmanager]
 command=$APP_DIR/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 3 --timeout 300 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 main:app
@@ -230,11 +260,21 @@ stdout_logfile=$APP_DIR/logs/gunicorn.log
 environment=DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME",SESSION_SECRET="$SESSION_SECRET",ENCRYPTION_KEY="$ENCRYPTION_KEY",ENCRYPTION_PASSWORD="$ENCRYPTION_PASSWORD",FLASK_ENV="production"
 EOF
 
+# Update supervisor and start application
 supervisorctl reread
 supervisorctl update
+sleep 2
 supervisorctl start ftpmanager
 
-print_success "Supervisor configured and application started"
+# Wait a moment and check status
+sleep 3
+SUPERVISOR_STATUS=$(supervisorctl status ftpmanager)
+if echo "$SUPERVISOR_STATUS" | grep -q "RUNNING"; then
+    print_success "Supervisor configured and application started successfully"
+else
+    print_warning "Supervisor configured but application may not be running properly"
+    echo "Status: $SUPERVISOR_STATUS"
+fi
 
 # Step 10: Nginx configuration with SSL
 print_status "Configuring Nginx with SSL..."
@@ -392,7 +432,7 @@ print_status "Performing final verification..."
 sleep 5
 
 # Check services
-SUPERVISOR_STATUS=$(supervisorctl status ftpmanager | grep RUNNING || echo "FAILED")
+SUPERVISOR_STATUS=$(supervisorctl status ftpmanager)
 NGINX_STATUS=$(systemctl is-active nginx)
 POSTGRES_STATUS=$(systemctl is-active postgresql)
 
@@ -402,11 +442,41 @@ echo "  - Nginx: $NGINX_STATUS"
 echo "  - PostgreSQL: $POSTGRES_STATUS"
 
 # Test HTTP response
-if curl -k -s -o /dev/null -w "%{http_code}" https://localhost | grep -q "200\|302\|301"; then
-    print_success "Application is responding to HTTPS requests"
+HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost 2>/dev/null || echo "000")
+if [[ "$HTTP_CODE" =~ ^(200|302|301)$ ]]; then
+    print_success "Application is responding to HTTPS requests (HTTP $HTTP_CODE)"
 else
-    print_warning "Application may not be responding correctly"
+    print_warning "Application may not be responding correctly (HTTP $HTTP_CODE)"
+    print_status "Checking application logs..."
+    tail -10 $APP_DIR/logs/gunicorn.log || echo "No logs available yet"
 fi
+
+# Create status check script
+print_status "Creating management scripts..."
+tee /usr/local/bin/ftpmanager-status > /dev/null <<EOF
+#!/bin/bash
+echo "=== FTP Manager Status ==="
+echo "Application: \$(supervisorctl status ftpmanager)"
+echo "Nginx: \$(systemctl is-active nginx)"
+echo "PostgreSQL: \$(systemctl is-active postgresql)"
+echo "Disk Usage: \$(df -h $APP_DIR | tail -1)"
+echo "Last Backup: \$(ls -la /home/$APP_USER/backups/ 2>/dev/null | tail -1 || echo 'No backups found')"
+echo "Recent Logs:"
+tail -5 $APP_DIR/logs/gunicorn.log 2>/dev/null || echo "No logs available"
+echo "==========================="
+EOF
+
+chmod +x /usr/local/bin/ftpmanager-status
+
+tee /usr/local/bin/ftpmanager-restart > /dev/null <<EOF
+#!/bin/bash
+echo "Restarting FTP Manager..."
+supervisorctl restart ftpmanager
+sleep 3
+supervisorctl status ftpmanager
+EOF
+
+chmod +x /usr/local/bin/ftpmanager-restart
 
 # Display final information
 print_success "=== DEPLOYMENT COMPLETED ==="
@@ -426,7 +496,7 @@ echo "  - Supervisor Config: /etc/supervisor/conf.d/ftpmanager.conf"
 echo ""
 echo "Management Commands:"
 echo "  - Check Status: ftpmanager-status"
-echo "  - Restart App: supervisorctl restart ftpmanager"
+echo "  - Restart App: ftpmanager-restart (or supervisorctl restart ftpmanager)"
 echo "  - View Logs: tail -f $APP_DIR/logs/gunicorn.log"
 echo "  - Manual Backup: /home/$APP_USER/backup.sh"
 echo ""
