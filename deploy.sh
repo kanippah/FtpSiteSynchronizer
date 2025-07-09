@@ -248,7 +248,7 @@ mkdir -p /var/log/supervisor
 systemctl start supervisor
 systemctl enable supervisor
 
-tee /etc/supervisor/conf.d/ftpmanager.conf > /dev/null <<EOF
+cat > /etc/supervisor/conf.d/ftpmanager.conf <<EOF
 [program:ftpmanager]
 command=$APP_DIR/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 3 --timeout 300 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 main:app
 directory=$APP_DIR
