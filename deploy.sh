@@ -73,7 +73,7 @@ fi
 # Generate secure passwords and keys
 print_status "Generating secure credentials..."
 DB_PASSWORD=$(generate_password)
-SESSION_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-50)
+SESSION_SECRET=$(openssl rand -base64 64 | tr -d "=+/\n" | cut -c1-50)
 ENCRYPTION_KEY=$(generate_fernet_key)
 ENCRYPTION_PASSWORD=$(generate_password)
 
@@ -223,9 +223,9 @@ except Exception as e:
 sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
 import os
 os.environ['DATABASE_URL'] = 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME'
-os.environ['SESSION_SECRET'] = '$SESSION_SECRET'
-os.environ['ENCRYPTION_KEY'] = '$ENCRYPTION_KEY'
-os.environ['ENCRYPTION_PASSWORD'] = '$ENCRYPTION_PASSWORD'
+os.environ['SESSION_SECRET'] = '''$SESSION_SECRET'''
+os.environ['ENCRYPTION_KEY'] = '''$ENCRYPTION_KEY'''
+os.environ['ENCRYPTION_PASSWORD'] = '''$ENCRYPTION_PASSWORD'''
 os.environ['FLASK_ENV'] = 'production'
 
 from main import app
