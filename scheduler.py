@@ -5,7 +5,7 @@ from models import Job, JobLog, Site
 from crypto_utils import decrypt_password
 from ftp_client import FTPClient
 from email_service import send_notification
-from utils import log_system_message, calculate_rolling_date_range
+from utils import log_system_message, calculate_rolling_date_range, filter_files_by_filename_date
 import os
 import glob
 
@@ -171,18 +171,49 @@ def execute_download_job(job, job_log):
         log_messages = []
         
         if job.download_all:
-            # Download all files/folders
-            if site.transfer_type == 'files':
-                result = client.download_all_files(site.remote_path, local_path)
+            # Download all files/folders (with optional filename date filtering)
+            if job.use_filename_date_filter and job.filename_date_pattern and site.transfer_type == 'files':
+                # Get file list first, apply filename date filtering, then download
+                files_list = client.list_files(site.remote_path)
+                if not files_list['success']:
+                    return files_list
+                
+                log_messages.append(f"Found {len(files_list['files'])} files before filtering")
+                
+                # Apply filename date filtering (no date range - just files with valid dates)
+                filtered_files = filter_files_by_filename_date(files_list['files'], job.filename_date_pattern, None, None)
+                log_messages.append(f"Files after filename date filter: {len(filtered_files)}")
+                
+                # Download filtered files manually
+                files_processed = 0
+                bytes_transferred = 0
+                
+                for file_info in filtered_files:
+                    if file_info['type'] == 'file':
+                        remote_file_path = os.path.join(site.remote_path, file_info['name']).replace('\\', '/')
+                        local_file_path = os.path.join(local_path, file_info['name'])
+                        
+                        result = client.download_file(remote_file_path, local_file_path)
+                        
+                        if result['success']:
+                            files_processed += 1
+                            bytes_transferred += result['bytes_transferred']
+                            log_messages.append(f"Downloaded: {file_info['name']}")
+                        else:
+                            log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
             else:
-                result = client.download_folder(site.remote_path, local_path)
-            
-            if result['success']:
-                files_processed = result.get('files_processed', 0)
-                bytes_transferred = result.get('bytes_transferred', 0)
-                log_messages = result.get('log', [])
-            else:
-                return result
+                # Regular download without filename filtering
+                if site.transfer_type == 'files':
+                    result = client.download_all_files(site.remote_path, local_path)
+                else:
+                    result = client.download_folder(site.remote_path, local_path)
+                
+                if result['success']:
+                    files_processed = result.get('files_processed', 0)
+                    bytes_transferred = result.get('bytes_transferred', 0)
+                    log_messages = result.get('log', [])
+                else:
+                    return result
         
         elif job.use_date_range or job.use_rolling_date_range:
             # Determine date range
@@ -200,20 +231,51 @@ def execute_download_job(job, job_log):
                 date_from, date_to = job.date_from, job.date_to
                 log_messages.append(f"Using static date range: {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
             
-            # Download files within date range
-            result = client.download_files_by_date_range(
-                site.remote_path, 
-                local_path, 
-                date_from, 
-                date_to
-            )
-            
-            if result['success']:
-                files_processed = result.get('files_processed', 0)
-                bytes_transferred = result.get('bytes_transferred', 0)
-                log_messages = result.get('log', [])
+            # Download files within date range (with optional filename date filtering)
+            if job.use_filename_date_filter and job.filename_date_pattern and site.transfer_type == 'files':
+                # Get file list first, apply filename date filtering based on date range, then download
+                files_list = client.list_files(site.remote_path)
+                if not files_list['success']:
+                    return files_list
+                
+                log_messages.append(f"Found {len(files_list['files'])} files before filtering")
+                
+                # Apply filename date filtering with date range
+                filtered_files = filter_files_by_filename_date(files_list['files'], job.filename_date_pattern, date_from, date_to)
+                log_messages.append(f"Files after filename date filter: {len(filtered_files)}")
+                
+                # Download filtered files manually
+                files_processed = 0
+                bytes_transferred = 0
+                
+                for file_info in filtered_files:
+                    if file_info['type'] == 'file':
+                        remote_file_path = os.path.join(site.remote_path, file_info['name']).replace('\\', '/')
+                        local_file_path = os.path.join(local_path, file_info['name'])
+                        
+                        result = client.download_file(remote_file_path, local_file_path)
+                        
+                        if result['success']:
+                            files_processed += 1
+                            bytes_transferred += result['bytes_transferred']
+                            log_messages.append(f"Downloaded: {file_info['name']}")
+                        else:
+                            log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
             else:
-                return result
+                # Regular date range download using file modification times
+                result = client.download_files_by_date_range(
+                    site.remote_path, 
+                    local_path, 
+                    date_from, 
+                    date_to
+                )
+                
+                if result['success']:
+                    files_processed = result.get('files_processed', 0)
+                    bytes_transferred = result.get('bytes_transferred', 0)
+                    log_messages = result.get('log', [])
+                else:
+                    return result
         
         else:
             # Download specific files/folders

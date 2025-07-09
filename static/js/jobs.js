@@ -153,6 +153,18 @@ function validateJobForm() {
         }
     }
     
+    // Validate filename date filter if enabled
+    const useFilenameDateFilter = document.getElementById('use_filename_date_filter');
+    if (useFilenameDateFilter && useFilenameDateFilter.checked) {
+        const filenameDatePattern = document.getElementById('filename_date_pattern');
+        if (filenameDatePattern && !filenameDatePattern.value) {
+            showFieldError(filenameDatePattern, 'Date pattern is required');
+            isValid = false;
+        } else {
+            clearFieldError(filenameDatePattern);
+        }
+    }
+    
     return isValid;
 }
 
@@ -347,6 +359,21 @@ function initializeDateRangeHandlers() {
         
         // Trigger change event on load
         rollingPattern.dispatchEvent(new Event('change'));
+    }
+    
+    // Handle filename date filter toggle
+    const useFilenameDateFilter = document.getElementById('use_filename_date_filter');
+    const filenameDateFilterFields = document.getElementById('filename_date_filter_fields');
+    
+    if (useFilenameDateFilter) {
+        useFilenameDateFilter.addEventListener('change', function() {
+            if (filenameDateFilterFields) {
+                filenameDateFilterFields.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+        
+        // Trigger change event on load
+        useFilenameDateFilter.dispatchEvent(new Event('change'));
     }
     
     // Handle download all checkbox

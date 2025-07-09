@@ -39,6 +39,8 @@ class Job(db.Model):
     date_offset_from = db.Column(db.Integer, nullable=True)  # Days offset from reference point
     date_offset_to = db.Column(db.Integer, nullable=True)  # Days offset to reference point
     download_all = db.Column(db.Boolean, default=False)
+    use_filename_date_filter = db.Column(db.Boolean, default=False)  # Filter by date in filename
+    filename_date_pattern = db.Column(db.String(50), nullable=True)  # Date pattern in filename (e.g., YYYYMMDD)
     local_path = db.Column(db.String(500), nullable=True)
     target_site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)  # For upload jobs
     status = db.Column(db.String(20), default='pending')  # 'pending', 'running', 'completed', 'failed'

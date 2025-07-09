@@ -254,6 +254,15 @@ def new_job():
                     job.date_offset_to = int(request.form.get('date_offset_to', 25))
             
             job.download_all = bool(request.form.get('download_all'))
+            
+            # Handle filename date filter
+            if request.form.get('use_filename_date_filter'):
+                job.use_filename_date_filter = True
+                job.filename_date_pattern = request.form.get('filename_date_pattern')
+            else:
+                job.use_filename_date_filter = False
+                job.filename_date_pattern = None
+            
             job.local_path = request.form.get('local_path', './downloads')
             
             # For upload jobs
@@ -374,6 +383,13 @@ def edit_job(job_id):
             
             job.download_all = bool(request.form.get('download_all'))
             job.local_path = request.form.get('local_path', './downloads')
+            
+            # Handle filename date filter
+            job.use_filename_date_filter = bool(request.form.get('use_filename_date_filter'))
+            if job.use_filename_date_filter:
+                job.filename_date_pattern = request.form.get('filename_date_pattern')
+            else:
+                job.filename_date_pattern = None
             
             # For upload jobs
             if job_type == 'upload' and request.form.get('target_site_id'):

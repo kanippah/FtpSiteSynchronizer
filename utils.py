@@ -1,6 +1,7 @@
 import os
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from app import db
 from models import SystemLog, Settings
 from crypto_utils import encrypt_text, decrypt_text
@@ -243,3 +244,73 @@ def calculate_rolling_date_range(rolling_pattern, reference_date=None, date_offs
     date_to = pattern['to_offset'](reference_date)
     
     return date_from, date_to
+
+def extract_date_from_filename(filename, pattern):
+    """Extract date from filename based on pattern"""
+    try:
+        if pattern == 'YYYYMMDD':
+            match = re.search(r'(\d{8})', filename)
+            if match:
+                date_str = match.group(1)
+                return datetime.strptime(date_str, '%Y%m%d')
+        
+        elif pattern == 'YYYY-MM-DD':
+            match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
+            if match:
+                date_str = match.group(1)
+                return datetime.strptime(date_str, '%Y-%m-%d')
+        
+        elif pattern == 'YYYY_MM_DD':
+            match = re.search(r'(\d{4}_\d{2}_\d{2})', filename)
+            if match:
+                date_str = match.group(1)
+                return datetime.strptime(date_str, '%Y_%m_%d')
+        
+        elif pattern == 'DDMMYYYY':
+            match = re.search(r'(\d{8})', filename)
+            if match:
+                date_str = match.group(1)
+                return datetime.strptime(date_str, '%d%m%Y')
+        
+        elif pattern == 'MMDDYYYY':
+            match = re.search(r'(\d{8})', filename)
+            if match:
+                date_str = match.group(1)
+                return datetime.strptime(date_str, '%m%d%Y')
+        
+        return None
+    except (ValueError, AttributeError):
+        return None
+
+def filter_files_by_filename_date(file_list, pattern, date_from, date_to):
+    """Filter files based on date extracted from filename"""
+    if not pattern or not file_list:
+        return file_list
+    
+    filtered_files = []
+    
+    for file_info in file_list:
+        filename = file_info.get('name', '') if isinstance(file_info, dict) else str(file_info)
+        
+        # Extract date from filename
+        file_date = extract_date_from_filename(filename, pattern)
+        
+        if file_date:
+            # Check if file date is within range
+            if date_from and date_to:
+                if date_from.date() <= file_date.date() <= date_to.date():
+                    filtered_files.append(file_info)
+            elif date_from:
+                if file_date.date() >= date_from.date():
+                    filtered_files.append(file_info)
+            elif date_to:
+                if file_date.date() <= date_to.date():
+                    filtered_files.append(file_info)
+            else:
+                # No date filtering, include all files with valid dates
+                filtered_files.append(file_info)
+        # If no date found in filename and no filtering is required, include the file
+        elif not date_from and not date_to:
+            filtered_files.append(file_info)
+    
+    return filtered_files

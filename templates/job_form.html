@@ -221,6 +221,45 @@
                         </div>
                     </div>
                     
+                    <!-- Transfer Settings Section -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Transfer Settings</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="use_filename_date_filter" name="use_filename_date_filter" {{ 'checked' if job and job.use_filename_date_filter else '' }}>
+                                <label class="form-check-label" for="use_filename_date_filter">
+                                    Filter files by date in filename
+                                </label>
+                                <div class="form-text">Only download files where the filename contains a date within the specified range</div>
+                            </div>
+                            
+                            <div id="filename_date_filter_fields" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="filename_date_pattern" class="form-label">Date Pattern in Filename</label>
+                                    <select class="form-select" id="filename_date_pattern" name="filename_date_pattern">
+                                        <option value="">Select pattern</option>
+                                        <option value="YYYYMMDD" {{ 'selected' if job and job.filename_date_pattern == 'YYYYMMDD' else '' }}>YYYYMMDD (20250707)</option>
+                                        <option value="YYYY-MM-DD" {{ 'selected' if job and job.filename_date_pattern == 'YYYY-MM-DD' else '' }}>YYYY-MM-DD (2025-07-07)</option>
+                                        <option value="YYYY_MM_DD" {{ 'selected' if job and job.filename_date_pattern == 'YYYY_MM_DD' else '' }}>YYYY_MM_DD (2025_07_07)</option>
+                                        <option value="DDMMYYYY" {{ 'selected' if job and job.filename_date_pattern == 'DDMMYYYY' else '' }}>DDMMYYYY (07072025)</option>
+                                        <option value="MMDDYYYY" {{ 'selected' if job and job.filename_date_pattern == 'MMDDYYYY' else '' }}>MMDDYYYY (07072025)</option>
+                                    </select>
+                                    <div class="form-text">Choose how the date appears in your filenames</div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <small>
+                                        <strong>How it works:</strong> The system will scan filenames for the selected date pattern and only download files where the extracted date falls within your specified date range (static, rolling, or download all).
+                                        <br><br>
+                                        <strong>Example:</strong> With pattern YYYYMMDD and rolling range "Last 30 days", file "data.20250707.log" will only be downloaded if July 7, 2025 is within the last 30 days.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Form Actions -->
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ url_for('jobs') }}" class="btn btn-secondary">Cancel</a>
@@ -275,6 +314,13 @@
                     <li><strong>Previous Month Full:</strong> Entire previous month</li>
                     <li><strong>Last 30 Days:</strong> Always the past 30 days from run date</li>
                     <li><strong>Custom:</strong> Choose any day of previous month to any day of current month</li>
+                </ul>
+                
+                <h6 class="mt-3">Transfer Settings</h6>
+                <ul class="list-unstyled small">
+                    <li><strong>Filename Date Filter:</strong> Extract dates from filenames and filter based on patterns</li>
+                    <li><strong>YYYYMMDD:</strong> data.20250707.log matches July 7, 2025</li>
+                    <li><strong>Works with all date options:</strong> Static, rolling, or download all</li>
                 </ul>
             </div>
         </div>
