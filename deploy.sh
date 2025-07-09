@@ -349,8 +349,8 @@ tee /etc/apache2/sites-available/ftpmanager.conf > /dev/null <<EOF
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
-    # File upload size limit
-    LimitRequestBody 104857600  # 100MB
+    # File upload size limit (100MB)
+    LimitRequestBody 104857600
 
     # Proxy configuration for Flask application
     ProxyPreserveHost On
