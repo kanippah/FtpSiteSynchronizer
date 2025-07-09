@@ -248,18 +248,16 @@ mkdir -p /var/log/supervisor
 systemctl start supervisor
 systemctl enable supervisor
 
-# Create supervisor configuration with proper variable escaping
-cat > /etc/supervisor/conf.d/ftpmanager.conf << EOFCONFIG
-[program:ftpmanager]
-command=$APP_DIR/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 3 --timeout 300 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 main:app
-directory=$APP_DIR
-user=$APP_USER
-autostart=true
-autorestart=true
-redirect_stderr=true
-stdout_logfile=$APP_DIR/logs/gunicorn.log
-environment=DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME",SESSION_SECRET="$SESSION_SECRET",ENCRYPTION_KEY="$ENCRYPTION_KEY",ENCRYPTION_PASSWORD="$ENCRYPTION_PASSWORD",FLASK_ENV="production"
-EOFCONFIG
+# Create supervisor configuration using printf to avoid quote issues
+printf '[program:ftpmanager]\n' > /etc/supervisor/conf.d/ftpmanager.conf
+printf 'command=%s/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 3 --timeout 300 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 main:app\n' "$APP_DIR" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'directory=%s\n' "$APP_DIR" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'user=%s\n' "$APP_USER" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'autostart=true\n' >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'autorestart=true\n' >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'redirect_stderr=true\n' >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'stdout_logfile=%s/logs/gunicorn.log\n' "$APP_DIR" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'environment=DATABASE_URL="postgresql://%s:%s@localhost/%s",SESSION_SECRET="%s",ENCRYPTION_KEY="%s",ENCRYPTION_PASSWORD="%s",FLASK_ENV="production"\n' "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$SESSION_SECRET" "$ENCRYPTION_KEY" "$ENCRYPTION_PASSWORD" >> /etc/supervisor/conf.d/ftpmanager.conf
 
 # Update supervisor and start application
 print_status "Starting supervisor services..."
