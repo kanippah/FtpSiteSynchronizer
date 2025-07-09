@@ -188,7 +188,12 @@ def execute_download_job(job, job_log):
             # Determine date range
             if job.use_rolling_date_range and job.rolling_pattern:
                 # Calculate rolling date range based on current execution time
-                date_from, date_to = calculate_rolling_date_range(job.rolling_pattern)
+                date_from, date_to = calculate_rolling_date_range(
+                    job.rolling_pattern, 
+                    reference_date=None,
+                    date_offset_from=job.date_offset_from,
+                    date_offset_to=job.date_offset_to
+                )
                 log_messages.append(f"Using rolling date range: {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
             else:
                 # Use static date range

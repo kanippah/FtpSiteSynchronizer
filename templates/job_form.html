@@ -151,8 +151,42 @@
                                     <option value="curr_month_1_to_25" {{ 'selected' if job and job.rolling_pattern == 'curr_month_1_to_25' else '' }}>Current month 1st to 25th</option>
                                     <option value="prev_15_days" {{ 'selected' if job and job.rolling_pattern == 'prev_15_days' else '' }}>Previous 15 days</option>
                                     <option value="last_30_days" {{ 'selected' if job and job.rolling_pattern == 'last_30_days' else '' }}>Last 30 days</option>
+                                    <option value="custom" {{ 'selected' if job and job.rolling_pattern == 'custom' else '' }}>Custom date range</option>
                                 </select>
                                 <div class="form-text">Pattern automatically adjusts dates on each job run</div>
+                            </div>
+                            
+                            <!-- Custom rolling date range fields -->
+                            <div id="custom_rolling_fields" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="date_offset_from" class="form-label">Previous Month Day</label>
+                                            <select class="form-select" id="date_offset_from" name="date_offset_from">
+                                                <option value="">Select day</option>
+                                                {% for day in range(1, 32) %}
+                                                <option value="{{ day }}" {{ 'selected' if job and job.date_offset_from == day else '' }}>{{ day }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">Day of previous month to start from</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="date_offset_to" class="form-label">Current Month Day</label>
+                                            <select class="form-select" id="date_offset_to" name="date_offset_to">
+                                                <option value="">Select day</option>
+                                                {% for day in range(1, 32) %}
+                                                <option value="{{ day }}" {{ 'selected' if job and job.date_offset_to == day else '' }}>{{ day }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">Day of current month to end at</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info">
+                                    <small><strong>Example:</strong> Previous month day 15 to current month day 10 means June 15 - July 10, then July 15 - August 10, etc.</small>
+                                </div>
                             </div>
                         </div>
                         
@@ -240,6 +274,7 @@
                     <li><strong>Prev Month 26-Curr 25:</strong> June 26 - July 25, then July 26 - Aug 25</li>
                     <li><strong>Previous Month Full:</strong> Entire previous month</li>
                     <li><strong>Last 30 Days:</strong> Always the past 30 days from run date</li>
+                    <li><strong>Custom:</strong> Choose any day of previous month to any day of current month</li>
                 </ul>
             </div>
         </div>

@@ -182,10 +182,35 @@ def cleanup_old_logs(days_to_keep=30):
         logger.error(f"Error cleaning up old logs: {str(e)}")
         db.session.rollback()
 
-def calculate_rolling_date_range(rolling_pattern, reference_date=None):
+def calculate_rolling_date_range(rolling_pattern, reference_date=None, date_offset_from=None, date_offset_to=None):
     """Calculate rolling date range based on pattern and reference date"""
     if reference_date is None:
         reference_date = datetime.utcnow()
+    
+    # Handle custom pattern with user-defined offsets
+    if rolling_pattern == 'custom' and date_offset_from is not None and date_offset_to is not None:
+        # Previous month day X to current month day Y
+        prev_month = reference_date.month - 1 if reference_date.month > 1 else 12
+        prev_year = reference_date.year if reference_date.month > 1 else reference_date.year - 1
+        
+        # Handle edge case where day doesn't exist in the month (e.g., Feb 30)
+        try:
+            date_from = datetime(prev_year, prev_month, date_offset_from, 0, 0, 0)
+        except ValueError:
+            # If day doesn't exist, use last day of month
+            from calendar import monthrange
+            last_day = monthrange(prev_year, prev_month)[1]
+            date_from = datetime(prev_year, prev_month, min(date_offset_from, last_day), 0, 0, 0)
+        
+        try:
+            date_to = datetime(reference_date.year, reference_date.month, date_offset_to, 23, 59, 59)
+        except ValueError:
+            # If day doesn't exist, use last day of month
+            from calendar import monthrange
+            last_day = monthrange(reference_date.year, reference_date.month)[1]
+            date_to = datetime(reference_date.year, reference_date.month, min(date_offset_to, last_day), 23, 59, 59)
+        
+        return date_from, date_to
     
     patterns = {
         'prev_month_26_to_curr_25': {

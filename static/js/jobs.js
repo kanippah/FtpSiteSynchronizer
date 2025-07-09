@@ -118,6 +118,26 @@ function validateJobForm() {
             isValid = false;
         } else {
             clearFieldError(rollingPattern);
+            
+            // Validate custom rolling pattern fields if selected
+            if (rollingPattern && rollingPattern.value === 'custom') {
+                const dateOffsetFrom = document.getElementById('date_offset_from');
+                const dateOffsetTo = document.getElementById('date_offset_to');
+                
+                if (dateOffsetFrom && !dateOffsetFrom.value) {
+                    showFieldError(dateOffsetFrom, 'Previous month day is required');
+                    isValid = false;
+                } else {
+                    clearFieldError(dateOffsetFrom);
+                }
+                
+                if (dateOffsetTo && !dateOffsetTo.value) {
+                    showFieldError(dateOffsetTo, 'Current month day is required');
+                    isValid = false;
+                } else {
+                    clearFieldError(dateOffsetTo);
+                }
+            }
         }
     }
     
@@ -312,6 +332,21 @@ function initializeDateRangeHandlers() {
         
         // Trigger change event on load
         useRollingDateRange.dispatchEvent(new Event('change'));
+    }
+    
+    // Handle rolling pattern change to show/hide custom fields
+    const rollingPattern = document.getElementById('rolling_pattern');
+    const customRollingFields = document.getElementById('custom_rolling_fields');
+    
+    if (rollingPattern) {
+        rollingPattern.addEventListener('change', function() {
+            if (customRollingFields) {
+                customRollingFields.style.display = this.value === 'custom' ? 'block' : 'none';
+            }
+        });
+        
+        // Trigger change event on load
+        rollingPattern.dispatchEvent(new Event('change'));
     }
     
     // Handle download all checkbox

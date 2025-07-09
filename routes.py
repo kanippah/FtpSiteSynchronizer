@@ -248,6 +248,10 @@ def new_job():
             if request.form.get('use_rolling_date_range'):
                 job.use_rolling_date_range = True
                 job.rolling_pattern = request.form.get('rolling_pattern')
+                # Handle custom pattern offsets
+                if job.rolling_pattern == 'custom':
+                    job.date_offset_from = int(request.form.get('date_offset_from', 1))
+                    job.date_offset_to = int(request.form.get('date_offset_to', 25))
             
             job.download_all = bool(request.form.get('download_all'))
             job.local_path = request.form.get('local_path', './downloads')
@@ -356,8 +360,17 @@ def edit_job(job_id):
             job.use_rolling_date_range = bool(request.form.get('use_rolling_date_range'))
             if job.use_rolling_date_range:
                 job.rolling_pattern = request.form.get('rolling_pattern')
+                # Handle custom pattern offsets
+                if job.rolling_pattern == 'custom':
+                    job.date_offset_from = int(request.form.get('date_offset_from', 1))
+                    job.date_offset_to = int(request.form.get('date_offset_to', 25))
+                else:
+                    job.date_offset_from = None
+                    job.date_offset_to = None
             else:
                 job.rolling_pattern = None
+                job.date_offset_from = None
+                job.date_offset_to = None
             
             job.download_all = bool(request.form.get('download_all'))
             job.local_path = request.form.get('local_path', './downloads')
