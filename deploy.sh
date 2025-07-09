@@ -111,7 +111,8 @@ apt install -y \
     postgresql \
     postgresql-contrib \
     postgresql-server-dev-all \
-    libpq-dev
+    libpq-dev \
+    cron
 
 print_success "System dependencies installed"
 
