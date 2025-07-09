@@ -90,7 +90,7 @@ apt install -y \
     python3-venv \
     python3-dev \
     git \
-    nginx \
+    apache2 \
     supervisor \
     curl \
     wget \
@@ -284,71 +284,95 @@ else
     tail -20 $APP_DIR/logs/gunicorn.log 2>/dev/null || echo "No logs available"
 fi
 
-# Step 10: Nginx configuration with SSL
-print_status "Configuring Nginx with SSL..."
-tee /etc/nginx/sites-available/ftpmanager > /dev/null <<EOF
-# Redirect HTTP to HTTPS
-server {
-    listen 80;
-    server_name $DOMAIN www.$DOMAIN;
-    return 301 https://\$server_name\$request_uri;
-}
+# Step 10: Apache configuration with SSL
+print_status "Configuring Apache with SSL..."
 
-# HTTPS server
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN www.$DOMAIN;
+# Enable required Apache modules
+a2enmod ssl
+a2enmod proxy
+a2enmod proxy_http
+a2enmod headers
+a2enmod rewrite
+
+# Create Apache virtual host configuration
+tee /etc/apache2/sites-available/ftpmanager.conf > /dev/null <<EOF
+# Redirect HTTP to HTTPS
+<VirtualHost *:80>
+    ServerName $DOMAIN
+    ServerAlias www.$DOMAIN
+    DocumentRoot $APP_DIR/static
+    
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</VirtualHost>
+
+# HTTPS Virtual Host
+<VirtualHost *:443>
+    ServerName $DOMAIN
+    ServerAlias www.$DOMAIN
+    DocumentRoot $APP_DIR/static
 
     # SSL Configuration
-    ssl_certificate $SSL_DIR/ftpmanager.crt;
-    ssl_certificate_key $SSL_DIR/ftpmanager.key;
+    SSLEngine on
+    SSLCertificateFile $SSL_DIR/ftpmanager.crt
+    SSLCertificateKeyFile $SSL_DIR/ftpmanager.key
     
     # Modern SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
+    SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1
+    SSLCipherSuite ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    SSLHonorCipherOrder off
+    SSLSessionTickets off
     
     # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Frame-Options DENY always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-XSS-Protection "1; mode=block" always;
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set X-Frame-Options DENY
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
-    client_max_body_size 100M;
+    # File upload size limit
+    LimitRequestBody 104857600  # 100MB
 
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
-        proxy_read_timeout 300;
-    }
-
-    location /static/ {
-        alias $APP_DIR/static/;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
+    # Proxy configuration for Flask application
+    ProxyPreserveHost On
+    ProxyRequests Off
+    
+    ProxyPass /static/ !
+    ProxyPass / http://127.0.0.1:5000/
+    ProxyPassReverse / http://127.0.0.1:5000/
+    
+    # Set proxy headers
+    ProxyPassReverse / http://127.0.0.1:5000/
+    ProxyPreserveHost On
+    ProxyAddHeaders On
+    
+    # Static files
+    Alias /static $APP_DIR/static
+    <Directory "$APP_DIR/static">
+        Require all granted
+        ExpiresActive On
+        ExpiresDefault "access plus 1 year"
+    </Directory>
+    
+    # Logs
+    ErrorLog \${APACHE_LOG_DIR}/ftpmanager_error.log
+    CustomLog \${APACHE_LOG_DIR}/ftpmanager_access.log combined
+</VirtualHost>
 EOF
 
-# Remove default nginx site and enable our site
-rm -f /etc/nginx/sites-enabled/default
-ln -sf /etc/nginx/sites-available/ftpmanager /etc/nginx/sites-enabled/
+# Disable default Apache site and enable our site
+a2dissite 000-default
+a2ensite ftpmanager
 
-# Test nginx configuration
-nginx -t
+# Test Apache configuration
+apache2ctl configtest
 
-# Restart nginx
-systemctl restart nginx
-systemctl enable nginx
+# Restart Apache
+systemctl restart apache2
+systemctl enable apache2
 
-print_success "Nginx configured with SSL"
+print_success "Apache configured with SSL"
 
 # Step 11: Firewall configuration
 print_status "Configuring firewall..."
@@ -356,7 +380,7 @@ ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
-ufw allow 'Nginx Full'
+ufw allow 'Apache Full'
 ufw --force enable
 
 print_success "Firewall configured"
@@ -418,22 +442,8 @@ chmod 600 $APP_DIR/.env
 
 print_success "File permissions set"
 
-# Step 15: Create status check script
-print_status "Creating status check script..."
-tee /usr/local/bin/ftpmanager-status > /dev/null <<EOF
-#!/bin/bash
-echo "=== FTP Manager Status ==="
-echo "Application: \$(supervisorctl status ftpmanager)"
-echo "Nginx: \$(systemctl is-active nginx)"
-echo "PostgreSQL: \$(systemctl is-active postgresql)"
-echo "Disk Usage: \$(df -h $APP_DIR | tail -1)"
-echo "Last Backup: \$(ls -la /home/$APP_USER/backups/ 2>/dev/null | tail -1 || echo 'No backups found')"
-echo "==========================="
-EOF
-
-chmod +x /usr/local/bin/ftpmanager-status
-
-print_success "Status check script created"
+# Step 15: Create backup script
+print_status "Setting up backup script..."
 
 # Final verification
 print_status "Performing final verification..."
@@ -441,12 +451,12 @@ sleep 5
 
 # Check services
 SUPERVISOR_STATUS=$(supervisorctl status ftpmanager)
-NGINX_STATUS=$(systemctl is-active nginx)
+APACHE_STATUS=$(systemctl is-active apache2)
 POSTGRES_STATUS=$(systemctl is-active postgresql)
 
 print_status "Service Status Check:"
 echo "  - Supervisor (ftpmanager): $SUPERVISOR_STATUS"
-echo "  - Nginx: $NGINX_STATUS"
+echo "  - Apache: $APACHE_STATUS"
 echo "  - PostgreSQL: $POSTGRES_STATUS"
 
 # Test HTTP response
@@ -465,7 +475,7 @@ cat > /usr/local/bin/ftpmanager-status << 'EOFSTATUS'
 #!/bin/bash
 echo "=== FTP Manager Status ==="
 echo "Application: $(supervisorctl status ftpmanager 2>/dev/null || echo 'Not running')"
-echo "Nginx: $(systemctl is-active nginx 2>/dev/null || echo 'inactive')"
+echo "Apache: $(systemctl is-active apache2 2>/dev/null || echo 'inactive')"
 echo "PostgreSQL: $(systemctl is-active postgresql 2>/dev/null || echo 'inactive')"
 echo "Disk Usage: $(df -h /home/ftpmanager/ftpmanager 2>/dev/null | tail -1 || echo 'N/A')"
 echo "Last Backup: $(ls -la /home/ftpmanager/backups/ 2>/dev/null | tail -1 || echo 'No backups found')"
@@ -499,7 +509,7 @@ echo ""
 echo "Important Files:"
 echo "  - Environment Config: $APP_DIR/.env"
 echo "  - Application Logs: $APP_DIR/logs/gunicorn.log"
-echo "  - Nginx Config: /etc/nginx/sites-available/ftpmanager"
+echo "  - Apache Config: /etc/apache2/sites-available/ftpmanager.conf"
 echo "  - Supervisor Config: /etc/supervisor/conf.d/ftpmanager.conf"
 echo ""
 echo "Management Commands:"
