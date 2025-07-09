@@ -490,3 +490,200 @@
         margin-bottom: 1rem;
     }
 }
+
+/* File Browser Specific Styles */
+.breadcrumb {
+    border: 1px solid white !important;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.375rem;
+    padding: 0.75rem 1rem;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    color: white;
+}
+
+.breadcrumb-item a {
+    color: var(--bs-light) !important;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--bs-primary) !important;
+}
+
+.breadcrumb-item.active {
+    color: white !important;
+}
+
+/* File table enhancements */
+.file-browser-table .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.file-browser-table .file-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 0.5rem;
+}
+
+.file-browser-table .folder-link {
+    text-decoration: none;
+    color: var(--bs-primary) !important;
+}
+
+.file-browser-table .folder-link:hover {
+    text-decoration: underline;
+}
+
+.file-browser-table .file-name {
+    color: var(--bs-light) !important;
+}
+
+/* File preview modal */
+.file-preview-modal .modal-content {
+    border: 1px solid white !important;
+}
+
+.file-preview-modal .modal-header {
+    border-bottom: 1px solid white !important;
+}
+
+.file-preview-modal .modal-footer {
+    border-top: 1px solid white !important;
+}
+
+.file-preview-content {
+    background-color: var(--bs-dark);
+    border: 1px solid white !important;
+    border-radius: 0.375rem;
+    color: var(--bs-light);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Site cards in browser listing */
+.browser-site-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid white !important;
+}
+
+.browser-site-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.browser-site-card .card-body {
+    border-color: white !important;
+}
+
+.browser-site-card .protocol-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* Directory navigation buttons */
+.nav-buttons {
+    gap: 0.5rem;
+}
+
+.nav-buttons .btn {
+    border: 1px solid white !important;
+}
+
+/* File action buttons */
+.file-actions .btn-group {
+    gap: 0.25rem;
+}
+
+.file-actions .btn {
+    border: 1px solid white !important;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Current path display */
+.current-path-display {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid white !important;
+    border-radius: 0.375rem;
+    padding: 0.75rem 1rem;
+    font-family: monospace;
+    color: var(--bs-light) !important;
+}
+
+/* File type badges */
+.file-type-badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.file-type-directory {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+.file-type-file {
+    background-color: var(--bs-secondary);
+    color: white;
+}
+
+/* Loading states */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    border-radius: 0.375rem;
+}
+
+.loading-overlay .spinner-border {
+    border-color: white !important;
+    border-top-color: var(--bs-primary) !important;
+}
+
+/* Responsive file browser */
+@media (max-width: 768px) {
+    .file-browser-table .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .file-browser-table .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .file-browser-table .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.25rem;
+        width: 100%;
+    }
+    
+    .breadcrumb {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .browser-site-card {
+        margin-bottom: 1rem;
+    }
+    
+    .nav-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .nav-buttons .btn {
+        margin-bottom: 0.5rem;
+    }
+}

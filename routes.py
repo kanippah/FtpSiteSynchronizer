@@ -3,6 +3,7 @@ from app import app, db, scheduler
 from models import Site, Job, JobLog, Settings, SystemLog
 from crypto_utils import encrypt_password, decrypt_password
 from ftp_client import FTPClient
+from ftp_browser import FTPBrowser
 from email_service import send_notification, send_test_email
 from utils import log_system_message, get_setting, set_setting
 from datetime import datetime, timedelta
@@ -649,6 +650,101 @@ def api_test_email():
     except Exception as e:
         logger.error(f"Error sending test email: {str(e)}")
         log_system_message('error', f'Test email error: {str(e)}', 'settings')
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/browser')
+def file_browser():
+    """File browser listing all sites"""
+    try:
+        sites = Site.query.order_by(Site.name).all()
+        return render_template('browser.html', sites=sites)
+    except Exception as e:
+        logger.error(f"Error loading file browser: {str(e)}")
+        flash(f'Error loading file browser: {str(e)}', 'error')
+        return render_template('browser.html', sites=[])
+
+@app.route('/browser/<int:site_id>')
+@app.route('/browser/<int:site_id>/<path:remote_path>')
+def browse_site(site_id, remote_path='.'):
+    """Browse files and folders on a specific site"""
+    try:
+        site = Site.query.get_or_404(site_id)
+        password = decrypt_password(site.password_encrypted)
+        
+        browser = FTPBrowser(site.protocol, site.host, site.port, site.username, password)
+        result = browser.browse_directory(remote_path)
+        
+        if not result['success']:
+            flash(f'Error browsing directory: {result["error"]}', 'error')
+            return redirect(url_for('file_browser'))
+        
+        # Add breadcrumb navigation
+        path_parts = []
+        if result['current_path'] and result['current_path'] != '/':
+            parts = result['current_path'].strip('/').split('/')
+            current = ''
+            for part in parts:
+                current += '/' + part
+                path_parts.append({
+                    'name': part,
+                    'path': current.lstrip('/')
+                })
+        
+        return render_template('browser_site.html', 
+                             site=site,
+                             current_path=result['current_path'],
+                             parent_path=result['parent_path'],
+                             items=result['items'],
+                             path_parts=path_parts)
+                             
+    except Exception as e:
+        logger.error(f"Error browsing site {site_id}: {str(e)}")
+        flash(f'Error browsing site: {str(e)}', 'error')
+        return redirect(url_for('file_browser'))
+
+@app.route('/browser/<int:site_id>/download/<path:remote_path>')
+def download_file(site_id, remote_path):
+    """Download a single file from FTP/SFTP site"""
+    try:
+        site = Site.query.get_or_404(site_id)
+        password = decrypt_password(site.password_encrypted)
+        
+        client = FTPClient(site.protocol, site.host, site.port, site.username, password)
+        
+        # Create a temporary local file
+        import tempfile
+        filename = os.path.basename(remote_path)
+        temp_dir = tempfile.mkdtemp()
+        local_path = os.path.join(temp_dir, filename)
+        
+        result = client.download_file(remote_path, local_path)
+        
+        if result['success']:
+            log_system_message('info', f'File downloaded from "{site.name}": {filename}', 'browser')
+            return send_file(local_path, as_attachment=True, download_name=filename)
+        else:
+            flash(f'Error downloading file: {result["error"]}', 'error')
+            return redirect(url_for('browse_site', site_id=site_id, remote_path=os.path.dirname(remote_path)))
+            
+    except Exception as e:
+        logger.error(f"Error downloading file: {str(e)}")
+        flash(f'Error downloading file: {str(e)}', 'error')
+        return redirect(url_for('file_browser'))
+
+@app.route('/api/browser/<int:site_id>/preview/<path:remote_path>')
+def preview_file(site_id, remote_path):
+    """Get a preview of file content"""
+    try:
+        site = Site.query.get_or_404(site_id)
+        password = decrypt_password(site.password_encrypted)
+        
+        browser = FTPBrowser(site.protocol, site.host, site.port, site.username, password)
+        result = browser.get_file_content_preview(remote_path)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error previewing file: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 @app.errorhandler(404)

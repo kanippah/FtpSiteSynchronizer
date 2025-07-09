@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Browse {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i data-feather="folder-open"></i> {{ site.name }}</h2>
+                    <small class="text-muted">{{ site.protocol.upper() }}://{{ site.host }}:{{ site.port }}</small>
+                </div>
+                <a href="{{ url_for('file_browser') }}" class="btn btn-secondary">
+                    <i data-feather="arrow-left"></i> Back to Browser
+                </a>
+            </div>
+
+            <!-- Breadcrumb Navigation -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('browse_site', site_id=site.id) }}">
+                            <i data-feather="home"></i> Root
+                        </a>
+                    </li>
+                    {% for part in path_parts %}
+                        <li class="breadcrumb-item">
+                            <a href="{{ url_for('browse_site', site_id=site.id, remote_path=part.path) }}">
+                                {{ part.name }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </nav>
+
+            <!-- Current Path Info -->
+            <div class="current-path-display mb-3">
+                <strong>Current Path:</strong> {{ current_path or '/' }}
+            </div>
+
+            <!-- File Listing -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i data-feather="list"></i> Directory Contents</h5>
+                </div>
+                <div class="card-body">
+                    {% if items %}
+                        <!-- Navigation -->
+                        {% if parent_path is not none %}
+                            <div class="mb-3 nav-buttons d-flex">
+                                <a href="{{ url_for('browse_site', site_id=site.id, remote_path=parent_path) }}" 
+                                   class="btn btn-outline-secondary btn-sm">
+                                    <i data-feather="arrow-up"></i> Up to Parent Directory
+                                </a>
+                            </div>
+                        {% endif %}
+
+                        <!-- File Table -->
+                        <div class="table-responsive file-browser-table">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Modified</th>
+                                        <th>Permissions</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in items %}
+                                        <tr>
+                                            <td>
+                                                {% if item.is_directory %}
+                                                    <a href="{{ url_for('browse_site', site_id=site.id, remote_path=item.path) }}" 
+                                                       class="text-decoration-none">
+                                                        <i data-feather="folder" class="text-primary"></i>
+                                                        {{ item.name }}
+                                                    </a>
+                                                {% else %}
+                                                    <i data-feather="file" class="text-muted"></i>
+                                                    {{ item.name }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.is_directory %}
+                                                    <span class="badge file-type-badge file-type-directory">Directory</span>
+                                                {% else %}
+                                                    <span class="badge file-type-badge file-type-file">File</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ item.size_formatted }}</td>
+                                            <td>{{ item.modified_formatted or '-' }}</td>
+                                            <td><code>{{ item.permissions }}</code></td>
+                                            <td>
+                                                {% if not item.is_directory %}
+                                                    <div class="file-actions">
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <button type="button" 
+                                                                    class="btn btn-outline-info btn-sm preview-btn" 
+                                                                    data-site-id="{{ site.id }}" 
+                                                                    data-file-path="{{ item.path }}"
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#previewModal">
+                                                                <i data-feather="eye"></i> Preview
+                                                            </button>
+                                                            <a href="{{ url_for('download_file', site_id=site.id, remote_path=item.path) }}" 
+                                                               class="btn btn-outline-success btn-sm">
+                                                                <i data-feather="download"></i> Download
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info" role="alert">
+                            <i data-feather="info"></i>
+                            This directory is empty or no files could be listed.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Preview Modal -->
+<div class="modal fade file-preview-modal" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">File Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading preview...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Feather icons
+    feather.replace();
+
+    // File preview functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const previewButtons = document.querySelectorAll('.preview-btn');
+        const previewContent = document.getElementById('previewContent');
+        const previewModal = document.getElementById('previewModal');
+        
+        previewButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const siteId = this.dataset.siteId;
+                const filePath = this.dataset.filePath;
+                const fileName = filePath.split('/').pop();
+                
+                // Update modal title
+                document.getElementById('previewModalLabel').textContent = `Preview: ${fileName}`;
+                
+                // Reset content
+                previewContent.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading preview...</p>
+                    </div>
+                `;
+                
+                // Fetch preview
+                fetch(`/api/browser/${siteId}/preview/${filePath}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.is_text) {
+                                previewContent.innerHTML = `
+                                    <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">
+                                        <code>${escapeHtml(data.content)}</code>
+                                    </pre>
+                                `;
+                            } else {
+                                previewContent.innerHTML = `
+                                    <div class="alert alert-warning" role="alert">
+                                        <i data-feather="alert-triangle"></i>
+                                        This file appears to be binary and cannot be previewed as text.
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            previewContent.innerHTML = `
+                                <div class="alert alert-danger" role="alert">
+                                    <i data-feather="alert-circle"></i>
+                                    Error loading preview: ${data.error}
+                                </div>
+                            `;
+                        }
+                        feather.replace();
+                    })
+                    .catch(error => {
+                        previewContent.innerHTML = `
+                            <div class="alert alert-danger" role="alert">
+                                <i data-feather="alert-circle"></i>
+                                Error loading preview: ${error.message}
+                            </div>
+                        `;
+                        feather.replace();
+                    });
+            });
+        });
+    });
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

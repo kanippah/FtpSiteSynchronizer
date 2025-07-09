@@ -56,6 +56,11 @@
                             <i data-feather="upload" class="me-1"></i>Upload
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['file_browser', 'browse_site'] %}active{% endif %}" href="{{ url_for('file_browser') }}">
+                            <i data-feather="folder" class="me-1"></i>Browser
+                        </a>
+                    </li>
                 </ul>
                 
                 <ul class="navbar-nav">

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}File Browser{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i data-feather="folder"></i> File Browser</h2>
+            </div>
+
+            {% if sites %}
+                <div class="row">
+                    {% for site in sites %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card browser-site-card">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i data-feather="server"></i> {{ site.name }}
+                                    </h5>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            {{ site.protocol.upper() }}://{{ site.host }}:{{ site.port }}
+                                        </small>
+                                    </p>
+                                    <p class="card-text">
+                                        <strong>Remote Path:</strong> {{ site.remote_path or '/' }}
+                                    </p>
+                                    <a href="{{ url_for('browse_site', site_id=site.id) }}" class="btn btn-primary btn-sm">
+                                        <i data-feather="folder-open"></i> Browse Files
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info" role="alert">
+                    <i data-feather="info"></i>
+                    No FTP/SFTP sites configured. <a href="{{ url_for('new_site') }}" class="alert-link">Add a site</a> to start browsing files.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Feather icons
+    feather.replace();
+</script>
+{% endblock %}
