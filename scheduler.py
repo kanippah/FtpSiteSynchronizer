@@ -5,7 +5,7 @@ from models import Job, JobLog, Site
 from crypto_utils import decrypt_password
 from ftp_client import FTPClient
 from email_service import send_notification
-from utils import log_system_message
+from utils import log_system_message, calculate_rolling_date_range
 import os
 import glob
 
@@ -184,13 +184,23 @@ def execute_download_job(job, job_log):
             else:
                 return result
         
-        elif job.use_date_range:
+        elif job.use_date_range or job.use_rolling_date_range:
+            # Determine date range
+            if job.use_rolling_date_range and job.rolling_pattern:
+                # Calculate rolling date range based on current execution time
+                date_from, date_to = calculate_rolling_date_range(job.rolling_pattern)
+                log_messages.append(f"Using rolling date range: {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
+            else:
+                # Use static date range
+                date_from, date_to = job.date_from, job.date_to
+                log_messages.append(f"Using static date range: {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
+            
             # Download files within date range
             result = client.download_files_by_date_range(
                 site.remote_path, 
                 local_path, 
-                job.date_from, 
-                job.date_to
+                date_from, 
+                date_to
             )
             
             if result['success']:

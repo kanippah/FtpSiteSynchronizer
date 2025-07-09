@@ -34,6 +34,10 @@ class Job(db.Model):
     use_date_range = db.Column(db.Boolean, default=False)
     date_from = db.Column(db.DateTime, nullable=True)
     date_to = db.Column(db.DateTime, nullable=True)
+    use_rolling_date_range = db.Column(db.Boolean, default=False)
+    rolling_pattern = db.Column(db.String(50), nullable=True)  # 'prev_month_26_to_curr_25', 'prev_month_full', etc.
+    date_offset_from = db.Column(db.Integer, nullable=True)  # Days offset from reference point
+    date_offset_to = db.Column(db.Integer, nullable=True)  # Days offset to reference point
     download_all = db.Column(db.Boolean, default=False)
     local_path = db.Column(db.String(500), nullable=True)
     target_site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)  # For upload jobs

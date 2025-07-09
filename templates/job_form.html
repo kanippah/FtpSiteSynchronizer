@@ -130,6 +130,32 @@
                             </div>
                         </div>
                         
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_rolling_date_range" name="use_rolling_date_range" {{ 'checked' if job and job.use_rolling_date_range else '' }}>
+                                <label class="form-check-label" for="use_rolling_date_range">
+                                    Use Rolling Date Range (Dynamic)
+                                </label>
+                            </div>
+                            <div class="form-text">Automatically calculates date range on each run (e.g., previous month 26th to current month 25th)</div>
+                        </div>
+                        
+                        <!-- Rolling date range pattern -->
+                        <div id="rolling_date_range_fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="rolling_pattern" class="form-label">Rolling Pattern</label>
+                                <select class="form-select" id="rolling_pattern" name="rolling_pattern">
+                                    <option value="">Select pattern</option>
+                                    <option value="prev_month_26_to_curr_25" {{ 'selected' if job and job.rolling_pattern == 'prev_month_26_to_curr_25' else '' }}>Previous month 26th to current month 25th</option>
+                                    <option value="prev_month_full" {{ 'selected' if job and job.rolling_pattern == 'prev_month_full' else '' }}>Previous month (full month)</option>
+                                    <option value="curr_month_1_to_25" {{ 'selected' if job and job.rolling_pattern == 'curr_month_1_to_25' else '' }}>Current month 1st to 25th</option>
+                                    <option value="prev_15_days" {{ 'selected' if job and job.rolling_pattern == 'prev_15_days' else '' }}>Previous 15 days</option>
+                                    <option value="last_30_days" {{ 'selected' if job and job.rolling_pattern == 'last_30_days' else '' }}>Last 30 days</option>
+                                </select>
+                                <div class="form-text">Pattern automatically adjusts dates on each job run</div>
+                            </div>
+                        </div>
+                        
                         <!-- Date range fields -->
                         <div id="date_range_fields" style="display: none;">
                             <div class="row">
@@ -200,6 +226,20 @@
                     <li><code>0 */6 * * *</code> - Every 6 hours</li>
                     <li><code>0 9 * * 1</code> - Every Monday at 9 AM</li>
                     <li><code>0 0 1 * *</code> - First day of month</li>
+                </ul>
+                
+                <h6 class="mt-3">Date Range Options</h6>
+                <ul class="list-unstyled small">
+                    <li><strong>Static Date Range:</strong> Fixed dates that remain the same</li>
+                    <li><strong>Rolling Date Range:</strong> Automatically adjusts each run</li>
+                    <li><strong>Download All:</strong> Ignores date filters</li>
+                </ul>
+                
+                <h6 class="mt-3">Rolling Pattern Examples</h6>
+                <ul class="list-unstyled small">
+                    <li><strong>Prev Month 26-Curr 25:</strong> June 26 - July 25, then July 26 - Aug 25</li>
+                    <li><strong>Previous Month Full:</strong> Entire previous month</li>
+                    <li><strong>Last 30 Days:</strong> Always the past 30 days from run date</li>
                 </ul>
             </div>
         </div>

@@ -78,6 +78,8 @@ function validateJobForm() {
     
     // Validate date range if enabled
     const useDateRange = document.getElementById('use_date_range');
+    const useRollingDateRange = document.getElementById('use_rolling_date_range');
+    
     if (useDateRange && useDateRange.checked) {
         const dateFrom = document.getElementById('date_from');
         const dateTo = document.getElementById('date_to');
@@ -105,6 +107,17 @@ function validateJobForm() {
                 showFieldError(dateTo, 'To date must be after from date');
                 isValid = false;
             }
+        }
+    }
+    
+    // Validate rolling date range if enabled
+    if (useRollingDateRange && useRollingDateRange.checked) {
+        const rollingPattern = document.getElementById('rolling_pattern');
+        if (rollingPattern && !rollingPattern.value) {
+            showFieldError(rollingPattern, 'Rolling pattern is required');
+            isValid = false;
+        } else {
+            clearFieldError(rollingPattern);
         }
     }
     
@@ -249,7 +262,9 @@ function initializeJobTypeHandlers() {
 
 function initializeDateRangeHandlers() {
     const useDateRange = document.getElementById('use_date_range');
+    const useRollingDateRange = document.getElementById('use_rolling_date_range');
     const dateRangeFields = document.getElementById('date_range_fields');
+    const rollingDateRangeFields = document.getElementById('rolling_date_range_fields');
     const downloadAllField = document.getElementById('download_all_field');
     const downloadAll = document.getElementById('download_all');
     
@@ -258,15 +273,14 @@ function initializeDateRangeHandlers() {
             if (dateRangeFields) {
                 dateRangeFields.style.display = this.checked ? 'block' : 'none';
             }
-            // Show download all option only for download jobs when date range is not enabled
-            if (downloadAllField) {
-                const jobType = document.getElementById('job_type');
-                if (jobType && jobType.value === 'download') {
-                    downloadAllField.style.display = this.checked ? 'none' : 'block';
-                } else {
-                    downloadAllField.style.display = 'none';
+            // Clear rolling date range when static date range is enabled
+            if (this.checked && useRollingDateRange) {
+                useRollingDateRange.checked = false;
+                if (rollingDateRangeFields) {
+                    rollingDateRangeFields.style.display = 'none';
                 }
             }
+            updateDownloadAllVisibility();
             // Clear download all when date range is enabled
             if (this.checked && downloadAll) {
                 downloadAll.checked = false;
@@ -277,15 +291,57 @@ function initializeDateRangeHandlers() {
         useDateRange.dispatchEvent(new Event('change'));
     }
     
+    if (useRollingDateRange) {
+        useRollingDateRange.addEventListener('change', function() {
+            if (rollingDateRangeFields) {
+                rollingDateRangeFields.style.display = this.checked ? 'block' : 'none';
+            }
+            // Clear static date range when rolling date range is enabled
+            if (this.checked && useDateRange) {
+                useDateRange.checked = false;
+                if (dateRangeFields) {
+                    dateRangeFields.style.display = 'none';
+                }
+            }
+            updateDownloadAllVisibility();
+            // Clear download all when rolling date range is enabled
+            if (this.checked && downloadAll) {
+                downloadAll.checked = false;
+            }
+        });
+        
+        // Trigger change event on load
+        useRollingDateRange.dispatchEvent(new Event('change'));
+    }
+    
     // Handle download all checkbox
     if (downloadAll) {
         downloadAll.addEventListener('change', function() {
-            // If download all is checked, disable date range
-            if (this.checked && useDateRange) {
-                useDateRange.checked = false;
-                useDateRange.dispatchEvent(new Event('change'));
+            // If download all is checked, disable both date range options
+            if (this.checked) {
+                if (useDateRange) {
+                    useDateRange.checked = false;
+                    useDateRange.dispatchEvent(new Event('change'));
+                }
+                if (useRollingDateRange) {
+                    useRollingDateRange.checked = false;
+                    useRollingDateRange.dispatchEvent(new Event('change'));
+                }
             }
         });
+    }
+    
+    function updateDownloadAllVisibility() {
+        if (downloadAllField) {
+            const jobType = document.getElementById('job_type');
+            const hasDateFilter = (useDateRange && useDateRange.checked) || (useRollingDateRange && useRollingDateRange.checked);
+            
+            if (jobType && jobType.value === 'download' && !hasDateFilter) {
+                downloadAllField.style.display = 'block';
+            } else {
+                downloadAllField.style.display = 'none';
+            }
+        }
     }
     
     // Set default date range to previous month to current month

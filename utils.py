@@ -181,3 +181,40 @@ def cleanup_old_logs(days_to_keep=30):
     except Exception as e:
         logger.error(f"Error cleaning up old logs: {str(e)}")
         db.session.rollback()
+
+def calculate_rolling_date_range(rolling_pattern, reference_date=None):
+    """Calculate rolling date range based on pattern and reference date"""
+    if reference_date is None:
+        reference_date = datetime.utcnow()
+    
+    patterns = {
+        'prev_month_26_to_curr_25': {
+            'from_offset': lambda ref: datetime(ref.year, ref.month - 1 if ref.month > 1 else 12, 26, 0, 0, 0) if ref.month > 1 else datetime(ref.year - 1, 12, 26, 0, 0, 0),
+            'to_offset': lambda ref: datetime(ref.year, ref.month, 25, 23, 59, 59)
+        },
+        'prev_month_full': {
+            'from_offset': lambda ref: datetime(ref.year, ref.month - 1 if ref.month > 1 else 12, 1, 0, 0, 0) if ref.month > 1 else datetime(ref.year - 1, 12, 1, 0, 0, 0),
+            'to_offset': lambda ref: (datetime(ref.year, ref.month, 1, 0, 0, 0) - timedelta(days=1)).replace(hour=23, minute=59, second=59)
+        },
+        'curr_month_1_to_25': {
+            'from_offset': lambda ref: datetime(ref.year, ref.month, 1, 0, 0, 0),
+            'to_offset': lambda ref: datetime(ref.year, ref.month, 25, 23, 59, 59)
+        },
+        'prev_15_days': {
+            'from_offset': lambda ref: (ref - timedelta(days=15)).replace(hour=0, minute=0, second=0, microsecond=0),
+            'to_offset': lambda ref: ref.replace(hour=23, minute=59, second=59, microsecond=0)
+        },
+        'last_30_days': {
+            'from_offset': lambda ref: (ref - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0),
+            'to_offset': lambda ref: ref.replace(hour=23, minute=59, second=59, microsecond=0)
+        }
+    }
+    
+    if rolling_pattern not in patterns:
+        raise ValueError(f"Unknown rolling pattern: {rolling_pattern}")
+    
+    pattern = patterns[rolling_pattern]
+    date_from = pattern['from_offset'](reference_date)
+    date_to = pattern['to_offset'](reference_date)
+    
+    return date_from, date_to

@@ -244,6 +244,11 @@ def new_job():
                 job.date_from = datetime.strptime(request.form['date_from'], '%Y-%m-%d')
                 job.date_to = datetime.strptime(request.form['date_to'], '%Y-%m-%d')
             
+            # Handle rolling date range
+            if request.form.get('use_rolling_date_range'):
+                job.use_rolling_date_range = True
+                job.rolling_pattern = request.form.get('rolling_pattern')
+            
             job.download_all = bool(request.form.get('download_all'))
             job.local_path = request.form.get('local_path', './downloads')
             
@@ -346,6 +351,13 @@ def edit_job(job_id):
             else:
                 job.date_from = None
                 job.date_to = None
+            
+            # Handle rolling date range
+            job.use_rolling_date_range = bool(request.form.get('use_rolling_date_range'))
+            if job.use_rolling_date_range:
+                job.rolling_pattern = request.form.get('rolling_pattern')
+            else:
+                job.rolling_pattern = None
             
             job.download_all = bool(request.form.get('download_all'))
             job.local_path = request.form.get('local_path', './downloads')
