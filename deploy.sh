@@ -77,7 +77,14 @@ SESSION_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-50)
 ENCRYPTION_KEY=$(generate_fernet_key)
 ENCRYPTION_PASSWORD=$(generate_password)
 
-print_status "Generated secure passwords for database and application"
+# Validate Fernet key format
+if [ ${#ENCRYPTION_KEY} -ne 44 ]; then
+    print_error "Invalid Fernet key generated. Expected 44 characters, got ${#ENCRYPTION_KEY}"
+    exit 1
+fi
+
+print_success "Generated secure passwords for database and application"
+print_status "Encryption key length: ${#ENCRYPTION_KEY} characters"
 
 # Step 1: System updates and basic packages
 print_status "Updating system packages..."
@@ -182,13 +189,16 @@ print_success "Python environment configured"
 
 # Step 6: Environment configuration
 print_status "Creating environment configuration..."
-sudo -u $APP_USER tee $APP_DIR/.env > /dev/null <<EOF
+# Create .env file using printf to properly handle special characters
+sudo -u $APP_USER bash -c "
+cat > $APP_DIR/.env << 'ENVEOF'
 DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME
 SESSION_SECRET=$SESSION_SECRET
 ENCRYPTION_KEY=$ENCRYPTION_KEY
 ENCRYPTION_PASSWORD=$ENCRYPTION_PASSWORD
 FLASK_ENV=production
-EOF
+ENVEOF
+"
 
 sudo -u $APP_USER chmod 600 $APP_DIR/.env
 print_success "Environment configuration created"
@@ -196,9 +206,10 @@ print_success "Environment configuration created"
 # Step 7: Initialize database
 print_status "Initializing application database..."
 # Test database connection first
-sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && export \$(cat .env | xargs) && python3 -c \"
+sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
 import psycopg2
 import os
+os.environ['DATABASE_URL'] = 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME'
 try:
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     conn.close()
@@ -209,7 +220,14 @@ except Exception as e:
 \""
 
 # Initialize database tables
-sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && export \$(cat .env | xargs) && python3 -c \"
+sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
+import os
+os.environ['DATABASE_URL'] = 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME'
+os.environ['SESSION_SECRET'] = '$SESSION_SECRET'
+os.environ['ENCRYPTION_KEY'] = '$ENCRYPTION_KEY'
+os.environ['ENCRYPTION_PASSWORD'] = '$ENCRYPTION_PASSWORD'
+os.environ['FLASK_ENV'] = 'production'
+
 from main import app
 from models import db
 with app.app_context():
