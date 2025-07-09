@@ -98,6 +98,9 @@
                                             <a href="/jobs/{{ job.id }}/run" class="btn btn-sm btn-outline-success run-job" data-job-id="{{ job.id }}" data-job-name="{{ job.name }}">
                                                 <i data-feather="play" class="me-1"></i>Run
                                             </a>
+                                            <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i data-feather="edit" class="me-1"></i>Edit
+                                            </a>
                                             <button class="btn btn-sm btn-outline-danger delete-job" data-job-id="{{ job.id }}" data-job-name="{{ job.name }}">
                                                 <i data-feather="trash-2" class="me-1"></i>Delete
                                             </button>

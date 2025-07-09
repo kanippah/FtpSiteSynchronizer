@@ -299,6 +299,84 @@ def run_job(job_id):
         flash(f'Error running job: {str(e)}', 'error')
         return redirect(url_for('jobs'))
 
+@app.route('/jobs/<int:job_id>/edit', methods=['GET', 'POST'])
+def edit_job(job_id):
+    """Edit an existing job"""
+    try:
+        job = Job.query.get_or_404(job_id)
+        
+        if request.method == 'POST':
+            from scheduler import schedule_job
+            
+            name = request.form['name']
+            site_id = int(request.form['site_id'])
+            job_type = request.form['job_type']
+            schedule_type = request.form['schedule_type']
+            
+            # Remove old job from scheduler
+            try:
+                scheduler.remove_job(f'job_{job_id}')
+            except:
+                pass
+            
+            # Update job object
+            job.name = name
+            job.site_id = site_id
+            job.job_type = job_type
+            job.schedule_type = schedule_type
+            
+            # Clear previous scheduling info
+            job.schedule_datetime = None
+            job.cron_expression = None
+            job.next_run = None
+            
+            # Handle scheduling
+            if schedule_type == 'one_time':
+                schedule_datetime = datetime.strptime(request.form['schedule_datetime'], '%Y-%m-%dT%H:%M')
+                job.schedule_datetime = schedule_datetime
+                job.next_run = schedule_datetime
+            else:
+                job.cron_expression = request.form['cron_expression']
+            
+            # Handle date range
+            job.use_date_range = bool(request.form.get('use_date_range'))
+            if job.use_date_range:
+                job.date_from = datetime.strptime(request.form['date_from'], '%Y-%m-%d')
+                job.date_to = datetime.strptime(request.form['date_to'], '%Y-%m-%d')
+            else:
+                job.date_from = None
+                job.date_to = None
+            
+            job.download_all = bool(request.form.get('download_all'))
+            job.local_path = request.form.get('local_path', './downloads')
+            
+            # For upload jobs
+            if job_type == 'upload' and request.form.get('target_site_id'):
+                job.target_site_id = int(request.form['target_site_id'])
+            else:
+                job.target_site_id = None
+            
+            job.updated_at = datetime.utcnow()
+            db.session.commit()
+            
+            # Reschedule the job
+            schedule_job(job)
+            
+            flash(f'Job "{name}" updated successfully!', 'success')
+            log_system_message('info', f'Job "{name}" updated', 'jobs')
+            
+            return redirect(url_for('jobs'))
+        
+        # GET request - show edit form
+        sites = Site.query.order_by(Site.name).all()
+        return render_template('edit_job.html', job=job, sites=sites)
+        
+    except Exception as e:
+        logger.error(f"Error editing job: {str(e)}")
+        flash(f'Error editing job: {str(e)}', 'error')
+        db.session.rollback()
+        return redirect(url_for('jobs'))
+
 @app.route('/jobs/<int:job_id>/delete', methods=['POST'])
 def delete_job(job_id):
     """Delete a job"""
