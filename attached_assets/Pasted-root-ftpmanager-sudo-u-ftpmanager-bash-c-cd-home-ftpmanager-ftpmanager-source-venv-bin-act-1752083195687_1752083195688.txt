@@ -1,0 +1,52 @@
+root@ftpmanager:~# sudo -u ftpmanager bash -c "cd /home/ftpmanager/ftpmanager && source venv/bin/activate && export \$(cat .env | xargs) && python3 -c \"
+from main import app
+from models import db
+with app.app_context():
+    db.create_all()
+    print('Database initialized successfully')
+\""
+DEBUG:tzlocal:/etc/timezone found, contents:
+ Etc/UTC
+
+DEBUG:tzlocal:/etc/localtime found
+DEBUG:tzlocal:2 found:
+ {'/etc/timezone': 'Etc/UTC', '/etc/localtime is a symlink to': 'Etc/UTC'}
+INFO:apscheduler.scheduler:Scheduler started
+DEBUG:apscheduler.scheduler:Looking for jobs to run
+DEBUG:apscheduler.scheduler:No jobs; waiting until a job is added
+Traceback (most recent call last):
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/cryptography/fernet.py", line 35, in __init__
+    key = base64.urlsafe_b64decode(key)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/base64.py", line 134, in urlsafe_b64decode
+    return b64decode(s)
+           ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/base64.py", line 88, in b64decode
+    return binascii.a2b_base64(s, strict_mode=validate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+binascii.Error: Invalid base64-encoded string: number of data characters (25) cannot be 1 more than a multiple of 4
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+  File "/home/ftpmanager/ftpmanager/main.py", line 1, in <module>
+    from app import app
+  File "/home/ftpmanager/ftpmanager/app.py", line 65, in <module>
+    from routes import *  # noqa: F401, E402
+    ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/routes.py", line 4, in <module>
+    from crypto_utils import encrypt_password, decrypt_password
+  File "/home/ftpmanager/ftpmanager/crypto_utils.py", line 39, in <module>
+    fernet = Fernet(encryption_key)
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ftpmanager/ftpmanager/venv/lib/python3.12/site-packages/cryptography/fernet.py", line 37, in __init__
+    raise ValueError(
+ValueError: Fernet key must be 32 url-safe base64-encoded bytes.
+INFO:apscheduler.scheduler:Scheduler has been shut down
+DEBUG:apscheduler.scheduler:Looking for jobs to run
+DEBUG:apscheduler.scheduler:No jobs; waiting until a job is added
+root@ftpmanager:~# sudo supervisorctl restart ftpmanager
+ftpmanager: ERROR (no such process)
+ftpmanager: ERROR (no such process)
+root@ftpmanager:~#

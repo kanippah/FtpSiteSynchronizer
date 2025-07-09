@@ -43,6 +43,11 @@ generate_password() {
     openssl rand -base64 32 | tr -d "=+/" | cut -c1-25
 }
 
+# Function to generate Fernet encryption key
+generate_fernet_key() {
+    python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+}
+
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     print_error "Please run this script as root (use sudo)"
@@ -64,7 +69,7 @@ fi
 # Generate secure passwords
 DB_PASSWORD=$(generate_password)
 SESSION_SECRET=$(generate_password)$(generate_password)
-ENCRYPTION_KEY=$(generate_password)
+ENCRYPTION_KEY=$(generate_fernet_key)
 ENCRYPTION_PASSWORD=$(generate_password)
 
 print_status "Generated secure passwords for database and application"
@@ -95,6 +100,9 @@ apt install -y \
     postgresql-contrib \
     postgresql-server-dev-all \
     libpq-dev
+
+# Install cryptography for key generation
+pip3 install cryptography
 
 print_success "System dependencies installed"
 
