@@ -460,6 +460,16 @@ chown -R $APP_USER:www-data $APP_DIR
 chmod -R 750 $APP_DIR
 chmod 600 $APP_DIR/.env
 
+# Fix Apache static file access permissions
+print_status "Configuring Apache static file permissions..."
+chmod 755 /home/$APP_USER
+chmod 755 $APP_DIR
+chmod 755 $APP_DIR/static
+chmod 755 $APP_DIR/static/css
+chmod 755 $APP_DIR/static/js
+chmod 644 $APP_DIR/static/css/*.css
+chmod 644 $APP_DIR/static/js/*.js
+
 print_success "File permissions set"
 
 # Step 15: Create backup script
