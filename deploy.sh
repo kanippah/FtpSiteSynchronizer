@@ -248,7 +248,8 @@ mkdir -p /var/log/supervisor
 systemctl start supervisor
 systemctl enable supervisor
 
-cat > /etc/supervisor/conf.d/ftpmanager.conf <<EOF
+# Create supervisor configuration with proper variable escaping
+cat > /etc/supervisor/conf.d/ftpmanager.conf << EOFCONFIG
 [program:ftpmanager]
 command=$APP_DIR/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 3 --timeout 300 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 main:app
 directory=$APP_DIR
@@ -258,10 +259,17 @@ autorestart=true
 redirect_stderr=true
 stdout_logfile=$APP_DIR/logs/gunicorn.log
 environment=DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME",SESSION_SECRET="$SESSION_SECRET",ENCRYPTION_KEY="$ENCRYPTION_KEY",ENCRYPTION_PASSWORD="$ENCRYPTION_PASSWORD",FLASK_ENV="production"
-EOF
+EOFCONFIG
 
 # Update supervisor and start application
+print_status "Starting supervisor services..."
 supervisorctl reread
+if [ $? -ne 0 ]; then
+    print_error "Supervisor configuration error. Checking config file..."
+    cat /etc/supervisor/conf.d/ftpmanager.conf
+    exit 1
+fi
+
 supervisorctl update
 sleep 2
 supervisorctl start ftpmanager
@@ -274,6 +282,8 @@ if echo "$SUPERVISOR_STATUS" | grep -q "RUNNING"; then
 else
     print_warning "Supervisor configured but application may not be running properly"
     echo "Status: $SUPERVISOR_STATUS"
+    print_status "Checking logs for errors..."
+    tail -20 $APP_DIR/logs/gunicorn.log 2>/dev/null || echo "No logs available"
 fi
 
 # Step 10: Nginx configuration with SSL
@@ -451,30 +461,30 @@ else
     tail -10 $APP_DIR/logs/gunicorn.log || echo "No logs available yet"
 fi
 
-# Create status check script
+# Create management scripts with proper escaping
 print_status "Creating management scripts..."
-tee /usr/local/bin/ftpmanager-status > /dev/null <<EOF
+cat > /usr/local/bin/ftpmanager-status << 'EOFSTATUS'
 #!/bin/bash
 echo "=== FTP Manager Status ==="
-echo "Application: \$(supervisorctl status ftpmanager)"
-echo "Nginx: \$(systemctl is-active nginx)"
-echo "PostgreSQL: \$(systemctl is-active postgresql)"
-echo "Disk Usage: \$(df -h $APP_DIR | tail -1)"
-echo "Last Backup: \$(ls -la /home/$APP_USER/backups/ 2>/dev/null | tail -1 || echo 'No backups found')"
+echo "Application: $(supervisorctl status ftpmanager 2>/dev/null || echo 'Not running')"
+echo "Nginx: $(systemctl is-active nginx 2>/dev/null || echo 'inactive')"
+echo "PostgreSQL: $(systemctl is-active postgresql 2>/dev/null || echo 'inactive')"
+echo "Disk Usage: $(df -h /home/ftpmanager/ftpmanager 2>/dev/null | tail -1 || echo 'N/A')"
+echo "Last Backup: $(ls -la /home/ftpmanager/backups/ 2>/dev/null | tail -1 || echo 'No backups found')"
 echo "Recent Logs:"
-tail -5 $APP_DIR/logs/gunicorn.log 2>/dev/null || echo "No logs available"
+tail -5 /home/ftpmanager/ftpmanager/logs/gunicorn.log 2>/dev/null || echo "No logs available"
 echo "==========================="
-EOF
+EOFSTATUS
 
 chmod +x /usr/local/bin/ftpmanager-status
 
-tee /usr/local/bin/ftpmanager-restart > /dev/null <<EOF
+cat > /usr/local/bin/ftpmanager-restart << 'EOFRESTART'
 #!/bin/bash
 echo "Restarting FTP Manager..."
 supervisorctl restart ftpmanager
 sleep 3
 supervisorctl status ftpmanager
-EOF
+EOFRESTART
 
 chmod +x /usr/local/bin/ftpmanager-restart
 
