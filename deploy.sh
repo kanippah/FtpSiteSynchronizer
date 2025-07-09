@@ -311,6 +311,7 @@ a2enmod proxy
 a2enmod proxy_http
 a2enmod headers
 a2enmod rewrite
+a2enmod expires
 
 # Create Apache virtual host configuration
 tee /etc/apache2/sites-available/ftpmanager.conf > /dev/null <<EOF
