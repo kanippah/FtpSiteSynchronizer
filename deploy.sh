@@ -179,16 +179,43 @@ cat > /etc/sudoers.d/ftpmanager-nfs << EOF
 # Allow ftpmanager user to mount/unmount NFS shares without password
 $APP_USER ALL=(ALL) NOPASSWD: /bin/mount
 $APP_USER ALL=(ALL) NOPASSWD: /bin/umount
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/mount
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/umount
 $APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.nfs
 $APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.nfs4
 $APP_USER ALL=(ALL) NOPASSWD: /sbin/umount.nfs
 $APP_USER ALL=(ALL) NOPASSWD: /sbin/umount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/mount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/mount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/umount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/umount.nfs4
 $APP_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /tmp/nfs_*
 $APP_USER ALL=(ALL) NOPASSWD: /bin/rmdir /tmp/nfs_*
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/showmount
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/showmount
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/showmount
 EOF
 
 chmod 440 /etc/sudoers.d/ftpmanager-nfs
-print_success "Sudo permissions configured for NFS operations"
+
+# Test sudo configuration
+print_status "Testing NFS sudo configuration..."
+sudo -u $APP_USER sudo -n mount --help >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_success "Sudo permissions configured for NFS operations"
+else
+    print_warning "Sudo permissions may not be working correctly"
+fi
+
+# Test NFS utilities availability
+print_status "Checking NFS client utilities..."
+for util in mount.nfs mount.nfs4 showmount; do
+    if which $util >/dev/null 2>&1; then
+        print_status "  ✓ $util found at $(which $util)"
+    else
+        print_warning "  ✗ $util not found"
+    fi
+done
 
 # Step 4: Setup application directory and clone repository
 print_status "Setting up application directory..."

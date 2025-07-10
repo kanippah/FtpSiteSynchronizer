@@ -39,13 +39,22 @@ class NFSClient:
             cmd.extend([nfs_server, self.mount_point])
             
             # Execute mount command
+            logger.info(f"Executing NFS mount command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             
             if result.returncode == 0:
                 logger.info(f"NFS mounted successfully at {self.mount_point}")
-                return True
+                # Verify mount is actually working
+                if self._verify_mount():
+                    return True
+                else:
+                    logger.error("Mount verification failed")
+                    self.unmount()
+                    return self._setup_alternative_access()
             else:
-                logger.error(f"NFS mount failed: {result.stderr}")
+                logger.error(f"NFS mount failed (exit code {result.returncode}): {result.stderr}")
+                if result.stdout:
+                    logger.error(f"Mount stdout: {result.stdout}")
                 self._cleanup_mount_point()
                 # Try alternative approach if mount fails
                 return self._setup_alternative_access()
@@ -229,16 +238,32 @@ class NFSClient:
     def _check_nfs_support(self):
         """Check if NFS mounting is supported in current environment"""
         try:
-            # Check if running with proper privileges and NFS client is available
+            # Check if NFS client utilities are available
+            nfs_utils = ['mount.nfs', 'mount.nfs4', 'showmount']
+            for util in nfs_utils:
+                result = subprocess.run(['which', util], capture_output=True, text=True)
+                if result.returncode == 0:
+                    logger.debug(f"Found NFS utility: {util}")
+                else:
+                    logger.warning(f"Missing NFS utility: {util}")
+            
+            # Check if mount.nfs exists (minimum requirement)
             result = subprocess.run(['which', 'mount.nfs'], capture_output=True, text=True)
             if result.returncode != 0:
+                logger.error("mount.nfs not found - NFS client not installed")
                 return False
             
             # Test sudo access for mount operations
             result = subprocess.run(['sudo', '-n', 'mount', '--help'], 
                                  capture_output=True, text=True, timeout=5)
-            return result.returncode == 0
-        except:
+            if result.returncode == 0:
+                logger.debug("Sudo access for mount operations confirmed")
+                return True
+            else:
+                logger.error("No sudo access for mount operations")
+                return False
+        except Exception as e:
+            logger.error(f"NFS support check failed: {str(e)}")
             return False
     
     def _setup_alternative_access(self):
@@ -262,3 +287,76 @@ class NFSClient:
         except Exception as e:
             logger.error(f"Alternative access setup failed: {str(e)}")
             return False
+    
+    def _verify_mount(self):
+        """Verify that the NFS mount is working properly"""
+        try:
+            if not self.mount_point or not os.path.exists(self.mount_point):
+                return False
+            
+            # Try to list the mount point
+            os.listdir(self.mount_point)
+            
+            # Check if it's actually mounted (Linux specific)
+            try:
+                with open('/proc/mounts', 'r') as f:
+                    mounts = f.read()
+                    if self.mount_point in mounts:
+                        logger.debug(f"Mount verified in /proc/mounts: {self.mount_point}")
+                        return True
+            except:
+                pass
+            
+            # Fallback: if we can list the directory, consider it mounted
+            logger.debug(f"Mount verified by directory listing: {self.mount_point}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Mount verification failed: {str(e)}")
+            return False
+    
+    def get_mount_status(self):
+        """Get detailed mount status information for debugging"""
+        status = {
+            'mounted': False,
+            'mount_point': self.mount_point,
+            'nfs_support': self._check_nfs_support(),
+            'errors': []
+        }
+        
+        try:
+            if self.mount_point and os.path.exists(self.mount_point):
+                status['mount_point_exists'] = True
+                
+                # Check if directory is accessible
+                try:
+                    files = os.listdir(self.mount_point)
+                    status['accessible'] = True
+                    status['file_count'] = len(files)
+                except Exception as e:
+                    status['accessible'] = False
+                    status['errors'].append(f"Access error: {str(e)}")
+                
+                # Check if it appears in mount table
+                try:
+                    with open('/proc/mounts', 'r') as f:
+                        mounts = f.read()
+                        if self.mount_point in mounts:
+                            status['in_proc_mounts'] = True
+                            # Extract mount line
+                            for line in mounts.split('\n'):
+                                if self.mount_point in line:
+                                    status['mount_line'] = line.strip()
+                                    break
+                        else:
+                            status['in_proc_mounts'] = False
+                except Exception as e:
+                    status['errors'].append(f"Mount check error: {str(e)}")
+                    
+            else:
+                status['mount_point_exists'] = False
+                
+        except Exception as e:
+            status['errors'].append(f"Status check error: {str(e)}")
+        
+        return status

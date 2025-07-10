@@ -964,6 +964,65 @@ def preview_file(site_id, remote_path):
         logger.error(f"Error previewing file: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/debug/nfs/<int:site_id>')
+def debug_nfs_status(site_id):
+    """Debug NFS site status for troubleshooting"""
+    try:
+        site = Site.query.get_or_404(site_id)
+        
+        if site.protocol != 'nfs':
+            return jsonify({'error': 'Site is not NFS protocol'}), 400
+        
+        from nfs_client import NFSClient
+        
+        # Create NFS client
+        nfs_client = NFSClient(
+            host=site.host,
+            export_path=site.nfs_export_path or '/',
+            nfs_version=site.nfs_version or '4',
+            mount_options=site.nfs_mount_options or '',
+            auth_method=site.nfs_auth_method or 'sys'
+        )
+        
+        # Get detailed status
+        status = nfs_client.get_mount_status()
+        
+        # Add site information
+        debug_info = {
+            'site_info': {
+                'id': site.id,
+                'name': site.name,
+                'host': site.host,
+                'export_path': site.nfs_export_path,
+                'version': site.nfs_version,
+                'auth_method': site.nfs_auth_method,
+                'mount_options': site.nfs_mount_options
+            },
+            'nfs_status': status,
+            'environment': {
+                'user': os.getenv('USER', 'unknown'),
+                'pwd': os.getcwd(),
+                'path': os.getenv('PATH', ''),
+            }
+        }
+        
+        # Try to get system mount information
+        try:
+            import subprocess
+            result = subprocess.run(['sudo', '-n', 'mount', '-l'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                debug_info['system_mounts'] = result.stdout.split('\n')
+            else:
+                debug_info['mount_error'] = result.stderr
+        except Exception as e:
+            debug_info['mount_check_error'] = str(e)
+        
+        return jsonify(debug_info)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('base.html'), 404
