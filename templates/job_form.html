@@ -40,7 +40,7 @@
                                     <select class="form-select" id="site_id" name="site_id" required>
                                         <option value="">Select a site</option>
                                         {% for site in sites %}
-                                        <option value="{{ site.id }}" {{ 'selected' if job and job.site_id == site.id else '' }}>
+                                        <option value="{{ site.id }}" {{ 'selected' if (job and job.site_id == site.id) or (selected_site_id and selected_site_id == site.id) else '' }}>
                                             {{ site.name }} ({{ site.protocol|upper }})
                                         </option>
                                         {% endfor %}

@@ -328,7 +328,11 @@ def new_job():
             db.session.rollback()
     
     sites = Site.query.order_by(Site.name).all()
-    return render_template('job_form.html', sites=sites)
+    
+    # Pre-select site if passed as parameter
+    selected_site_id = request.args.get('site_id', type=int)
+    
+    return render_template('job_form.html', sites=sites, selected_site_id=selected_site_id)
 
 @app.route('/jobs/<int:job_id>/run')
 def run_job(job_id):
