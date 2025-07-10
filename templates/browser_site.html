@@ -50,10 +50,17 @@
                         <!-- Navigation -->
                         {% if parent_path is not none %}
                             <div class="mb-3 nav-buttons d-flex">
-                                <a href="{{ url_for('browse_site', site_id=site.id, remote_path=parent_path if parent_path != '' else '.') }}" 
-                                   class="btn btn-outline-secondary btn-sm">
-                                    <i data-feather="arrow-up"></i> Up to Parent Directory
-                                </a>
+                                {% if parent_path == '' %}
+                                    <a href="{{ url_for('browse_site', site_id=site.id) }}" 
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i data-feather="arrow-up"></i> Up to Parent Directory
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('browse_site', site_id=site.id, remote_path=parent_path) }}" 
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i data-feather="arrow-up"></i> Up to Parent Directory
+                                    </a>
+                                {% endif %}
                             </div>
                         {% endif %}
 
@@ -147,7 +154,7 @@
                                                         {% if item.is_directory %}
                                                             <a href="{{ url_for('browse_site', site_id=site.id, remote_path=item.path.lstrip('/')) }}" 
                                                                class="btn btn-sm btn-outline-primary" title="Open Folder">
-                                                                <i data-feather="folder-open"></i>
+                                                                <i data-feather="folder-open"></i> Open
                                                             </a>
                                                         {% else %}
                                                             <button type="button" 
@@ -157,11 +164,11 @@
                                                                     data-bs-toggle="modal" 
                                                                     data-bs-target="#previewModal"
                                                                     title="Preview File">
-                                                                <i data-feather="eye"></i>
+                                                                <i data-feather="eye"></i> Preview
                                                             </button>
                                                             <a href="{{ url_for('download_file', site_id=site.id, remote_path=item.path.lstrip('/')) }}" 
                                                                class="btn btn-sm btn-outline-success" title="Download File">
-                                                                <i data-feather="download"></i>
+                                                                <i data-feather="download"></i> Download
                                                             </a>
                                                         {% endif %}
                                                     </div>
@@ -212,18 +219,80 @@
 
 {% block scripts %}
 <script>
-    // Initialize Feather icons
-    feather.replace();
-    
-    // Re-initialize feather icons when page content changes
+    // Initialize Feather icons multiple times to ensure they load
     document.addEventListener('DOMContentLoaded', function() {
         // Initial icon replacement
         feather.replace();
         
-        // Replace icons after any AJAX or dynamic content updates
+        // Multiple replacements to ensure all icons load
         setTimeout(function() {
             feather.replace();
         }, 100);
+        
+        setTimeout(function() {
+            feather.replace();
+        }, 500);
+        
+        setTimeout(function() {
+            feather.replace();
+        }, 1000);
+    });
+    
+    // Replace icons immediately
+    feather.replace();
+    
+    // Add preview functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const previewBtns = document.querySelectorAll('.preview-btn');
+        previewBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const siteId = this.dataset.siteId;
+                const filePath = this.dataset.filePath;
+                
+                // Show loading state
+                const previewContent = document.getElementById('previewContent');
+                previewContent.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading preview...</p>
+                    </div>
+                `;
+                
+                // Fetch file preview
+                fetch(`/api/browser/${siteId}/preview/${filePath}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            previewContent.innerHTML = `
+                                <div class="file-preview">
+                                    <h6 class="mb-3">File: ${filePath}</h6>
+                                    <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code>${data.content}</code></pre>
+                                </div>
+                            `;
+                        } else {
+                            previewContent.innerHTML = `
+                                <div class="alert alert-danger" role="alert">
+                                    <i data-feather="alert-circle"></i>
+                                    Error loading preview: ${data.error}
+                                </div>
+                            `;
+                        }
+                        // Replace icons in modal
+                        feather.replace();
+                    })
+                    .catch(error => {
+                        previewContent.innerHTML = `
+                            <div class="alert alert-danger" role="alert">
+                                <i data-feather="alert-circle"></i>
+                                Error: ${error.message}
+                            </div>
+                        `;
+                        feather.replace();
+                    });
+            });
+        });
     });
 
     // File preview functionality

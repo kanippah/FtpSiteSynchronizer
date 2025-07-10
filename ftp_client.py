@@ -37,15 +37,15 @@ class FTPClient:
             if self.protocol == 'ftp':
                 self.connection = ftplib.FTP()
                 # Set timeout for FTP connections
-                self.connection.connect(self.host, self.port, timeout=30)
+                self.connection.connect(self.host, self.port, timeout=10)
                 self.connection.login(self.username, self.password)
                 # Set passive mode for better firewall compatibility
                 self.connection.set_pasv(True)
             elif self.protocol == 'sftp':
                 transport = paramiko.Transport((self.host, self.port))
                 # Set timeout for SFTP connections
-                transport.set_keepalive(30)
-                transport.connect(username=self.username, password=self.password, timeout=30)
+                transport.set_keepalive(10)
+                transport.connect(username=self.username, password=self.password, timeout=10)
                 self.connection = paramiko.SFTPClient.from_transport(transport)
                 self.transport = transport  # Keep reference for cleanup
             elif self.protocol == 'nfs':
