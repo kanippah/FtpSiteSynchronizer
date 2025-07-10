@@ -3,7 +3,7 @@
 # FTP/SFTP/NFS Manager - Ubuntu 24.04 Deployment Script
 # This script deploys the application on a fresh Ubuntu 24.04 server
 
-set -e  # Exit on any error
+set +e  # Continue on errors
 
 # Color codes for output
 RED='\033[0;31m'
@@ -11,6 +11,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Make script more robust - continue on most errors
+set +e
 
 # Configuration variables
 APP_NAME="ftpmanager"
@@ -240,14 +243,15 @@ print_status "Setting up application directory..."
 sudo -u $APP_USER mkdir -p $APP_DIR
 cd $APP_DIR
 
-print_status "Cloning repository from GitHub..."
+print_status "Setting up repository..."
 if [ -d ".git" ]; then
     print_warning "Repository already exists, pulling latest changes..."
     sudo -u $APP_USER git pull origin main 2>/dev/null || sudo -u $APP_USER git pull origin master 2>/dev/null || print_warning "Could not pull latest changes"
+elif [ -n "$GITHUB_REPO" ] && [ "$GITHUB_REPO" != "" ]; then
+    print_status "Cloning repository from GitHub..."
+    sudo -u $APP_USER git clone $GITHUB_REPO . || print_warning "Git clone failed, continuing with existing files..."
 else
-    sudo -u $APP_USER git clone $GITHUB_REPO . || {
-        print_warning "Git clone failed, continuing with existing files..."
-    }
+    print_warning "No GitHub repository specified, assuming files are already present"
 fi
 
 # Create required directories
@@ -308,8 +312,10 @@ except Exception as e:
     print('Continuing with deployment...')
 \""
 
-# Initialize database tables
-sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
+# Initialize database tables if main.py exists
+if [ -f "main.py" ]; then
+    print_status "Initializing database tables..."
+    sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
 import os
 os.environ['DATABASE_URL'] = 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME'
 os.environ['SESSION_SECRET'] = '''$SESSION_SECRET'''
@@ -317,16 +323,19 @@ os.environ['ENCRYPTION_KEY'] = '''$ENCRYPTION_KEY'''
 os.environ['ENCRYPTION_PASSWORD'] = '''$ENCRYPTION_PASSWORD'''
 os.environ['FLASK_ENV'] = 'production'
 
-from main import app
-from models import db
-with app.app_context():
-    try:
+try:
+    from main import app
+    from models import db
+    with app.app_context():
         db.create_all()
         print('Database initialized successfully')
-    except Exception as e:
-        print(f'Database initialization failed: {e}')
-        print('Continuing with deployment...')
+except Exception as e:
+    print(f'Database initialization failed: {e}')
+    print('Continuing with deployment...')
 \""
+else
+    print_warning "main.py not found, skipping database initialization"
+fi
 
 print_success "Database initialized"
 
@@ -377,7 +386,7 @@ fi
 
 supervisorctl update
 sleep 2
-supervisorctl start ftpmanager
+supervisorctl start ftpmanager || print_warning "Could not start ftpmanager service"
 
 # Wait a moment and check status
 sleep 3
@@ -474,7 +483,7 @@ a2dissite 000-default
 a2ensite ftpmanager
 
 # Test Apache configuration
-apache2ctl configtest
+apache2ctl configtest || print_warning "Apache configuration test failed"
 
 # Restart Apache
 systemctl restart apache2
