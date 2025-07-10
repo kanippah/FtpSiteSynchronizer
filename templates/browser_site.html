@@ -62,58 +62,110 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Type</th>
-                                        <th>Size</th>
-                                        <th>Modified</th>
-                                        <th>Permissions</th>
-                                        <th>Actions</th>
+                                        <th style="width: 40%;">Name</th>
+                                        <th style="width: 10%;">Type</th>
+                                        <th style="width: 12%;">Size</th>
+                                        <th style="width: 15%;">Modified</th>
+                                        <th style="width: 8%;">Permissions</th>
+                                        <th style="width: 15%;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for item in items %}
-                                        <tr>
+                                        <tr class="{% if item.is_directory %}table-active{% endif %}">
                                             <td>
                                                 {% if item.is_directory %}
                                                     <a href="{{ url_for('browse_site', site_id=site.id, remote_path=item.path.lstrip('/')) }}" 
-                                                       class="text-decoration-none">
-                                                        <i data-feather="folder" class="text-primary"></i>
-                                                        {{ item.name }}
+                                                       class="folder-link d-flex align-items-center">
+                                                        <i data-feather="folder" class="text-primary me-2 file-icon"></i>
+                                                        <strong>{{ item.name }}</strong>
                                                     </a>
                                                 {% else %}
-                                                    <i data-feather="file" class="text-muted"></i>
-                                                    {{ item.name }}
+                                                    <div class="d-flex align-items-center file-name">
+                                                        {% set file_ext = item.name.split('.')[-1].lower() if '.' in item.name else '' %}
+                                                        {% if file_ext in ['txt', 'log', 'md', 'py', 'js', 'html', 'css', 'json', 'xml', 'csv'] %}
+                                                            <i data-feather="file-text" class="text-info me-2 file-icon"></i>
+                                                        {% elif file_ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg'] %}
+                                                            <i data-feather="image" class="text-warning me-2 file-icon"></i>
+                                                        {% elif file_ext in ['zip', 'rar', 'tar', 'gz', '7z'] %}
+                                                            <i data-feather="archive" class="text-secondary me-2 file-icon"></i>
+                                                        {% elif file_ext in ['pdf'] %}
+                                                            <i data-feather="file" class="text-danger me-2 file-icon"></i>
+                                                        {% else %}
+                                                            <i data-feather="file" class="text-muted me-2 file-icon"></i>
+                                                        {% endif %}
+                                                        {{ item.name }}
+                                                        {% if file_ext %}
+                                                            <small class="text-muted ms-2">.{{ file_ext }}</small>
+                                                        {% endif %}
+                                                    </div>
                                                 {% endif %}
                                             </td>
                                             <td>
                                                 {% if item.is_directory %}
-                                                    <span class="badge file-type-badge file-type-directory">Directory</span>
+                                                    <span class="badge file-type-badge file-type-directory">
+                                                        <i data-feather="folder" class="me-1" style="width: 12px; height: 12px;"></i>
+                                                        Folder
+                                                    </span>
                                                 {% else %}
-                                                    <span class="badge file-type-badge file-type-file">File</span>
+                                                    <span class="badge file-type-badge file-type-file">
+                                                        <i data-feather="file" class="me-1" style="width: 12px; height: 12px;"></i>
+                                                        File
+                                                    </span>
                                                 {% endif %}
                                             </td>
-                                            <td>{{ item.size_formatted }}</td>
-                                            <td>{{ item.modified_formatted or '-' }}</td>
-                                            <td><code>{{ item.permissions }}</code></td>
                                             <td>
-                                                {% if not item.is_directory %}
-                                                    <div class="file-actions">
-                                                        <div class="btn-group btn-group-sm" role="group">
+                                                {% if item.is_directory %}
+                                                    <span class="text-muted">—</span>
+                                                {% else %}
+                                                    <strong>{{ item.size_formatted }}</strong>
+                                                    {% if item.size %}
+                                                        <br><small class="text-muted">{{ "{:,}".format(item.size) }} bytes</small>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.modified_formatted %}
+                                                    <div class="small">
+                                                        <strong>{{ item.modified_formatted.split(' ')[0] }}</strong>
+                                                        <br><span class="text-muted">{{ item.modified_formatted.split(' ')[1] if ' ' in item.modified_formatted else '' }}</span>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.permissions %}
+                                                    <code class="small">{{ item.permissions }}</code>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="file-actions">
+                                                    <div class="btn-group" role="group">
+                                                        {% if item.is_directory %}
+                                                            <a href="{{ url_for('browse_site', site_id=site.id, remote_path=item.path.lstrip('/')) }}" 
+                                                               class="btn btn-sm btn-outline-primary" title="Open Folder">
+                                                                <i data-feather="folder-open"></i>
+                                                            </a>
+                                                        {% else %}
                                                             <button type="button" 
-                                                                    class="btn btn-outline-info btn-sm preview-btn" 
+                                                                    class="btn btn-sm btn-outline-info preview-btn" 
                                                                     data-site-id="{{ site.id }}" 
                                                                     data-file-path="{{ item.path.lstrip('/') }}"
                                                                     data-bs-toggle="modal" 
-                                                                    data-bs-target="#previewModal">
-                                                                <i data-feather="eye"></i> Preview
+                                                                    data-bs-target="#previewModal"
+                                                                    title="Preview File">
+                                                                <i data-feather="eye"></i>
                                                             </button>
                                                             <a href="{{ url_for('download_file', site_id=site.id, remote_path=item.path.lstrip('/')) }}" 
-                                                               class="btn btn-outline-success btn-sm">
-                                                                <i data-feather="download"></i> Download
+                                                               class="btn btn-sm btn-outline-success" title="Download File">
+                                                                <i data-feather="download"></i>
                                                             </a>
-                                                        </div>
+                                                        {% endif %}
                                                     </div>
-                                                {% endif %}
+                                                </div>
                                             </td>
                                         </tr>
                                     {% endfor %}

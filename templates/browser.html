@@ -8,37 +8,89 @@
         <div class="col-md-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i data-feather="folder"></i> File Browser</h2>
+                <a href="{{ url_for('new_site') }}" class="btn btn-primary">
+                    <i data-feather="plus" class="me-2"></i>Add New Site
+                </a>
             </div>
 
             {% if sites %}
-                <div class="row">
-                    {% for site in sites %}
-                        <div class="col-md-6 col-lg-4 mb-4">
-                            <div class="card browser-site-card">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <i data-feather="server"></i> {{ site.name }}
-                                    </h5>
-                                    <p class="card-text">
-                                        <small class="text-muted">
-                                            {{ site.protocol.upper() }}://{{ site.host }}:{{ site.port }}
-                                        </small>
-                                    </p>
-                                    <p class="card-text">
-                                        <strong>Remote Path:</strong> {{ site.remote_path or '/' }}
-                                    </p>
-                                    <a href="{{ url_for('browse_site', site_id=site.id) }}" class="btn btn-primary btn-sm">
-                                        <i data-feather="folder-open"></i> Browse Files
-                                    </a>
-                                </div>
-                            </div>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Site Name</th>
+                                        <th>Protocol</th>
+                                        <th>Host</th>
+                                        <th>Port</th>
+                                        <th>Username</th>
+                                        <th>Remote Path</th>
+                                        <th>NFS Details</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for site in sites %}
+                                    <tr>
+                                        <td>
+                                            <i data-feather="server" class="me-2"></i>
+                                            <strong>{{ site.name }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge protocol-{{ site.protocol }}">{{ site.protocol|upper }}</span>
+                                        </td>
+                                        <td>
+                                            <i data-feather="globe" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                            {{ site.host }}
+                                        </td>
+                                        <td>{{ site.port }}</td>
+                                        <td>
+                                            {% if site.protocol == 'nfs' %}
+                                                <span class="text-muted">N/A</span>
+                                            {% else %}
+                                                <i data-feather="user" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                                {{ site.username }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <i data-feather="folder" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                            <code>{{ site.remote_path or '/' }}</code>
+                                        </td>
+                                        <td>
+                                            {% if site.protocol == 'nfs' %}
+                                                <div class="small">
+                                                    <div><strong>Export:</strong> <code>{{ site.nfs_export_path }}</code></div>
+                                                    <div><strong>Version:</strong> NFSv{{ site.nfs_version }}</div>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('browse_site', site_id=site.id) }}" class="btn btn-sm btn-primary" title="Browse Files">
+                                                    <i data-feather="folder-open"></i>
+                                                </a>
+                                                <a href="/sites/{{ site.id }}/test" class="btn btn-sm btn-outline-info test-connection" data-site-id="{{ site.id }}" title="Test Connection">
+                                                    <i data-feather="wifi"></i>
+                                                </a>
+                                                <a href="{{ url_for('edit_site', site_id=site.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit Site">
+                                                    <i data-feather="edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
-                    {% endfor %}
+                    </div>
                 </div>
             {% else %}
                 <div class="alert alert-info" role="alert">
                     <i data-feather="info"></i>
-                    No FTP/SFTP sites configured. <a href="{{ url_for('new_site') }}" class="alert-link">Add a site</a> to start browsing files.
+                    No FTP/SFTP/NFS sites configured. <a href="{{ url_for('new_site') }}" class="alert-link">Add a site</a> to start browsing files.
                 </div>
             {% endif %}
         </div>
@@ -47,6 +99,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/sites.js') }}"></script>
 <script>
     // Initialize Feather icons
     feather.replace();
