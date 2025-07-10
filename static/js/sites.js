@@ -33,14 +33,33 @@ function initializeFormValidation() {
 function validateSiteForm() {
     let isValid = true;
     
+    // Get current protocol
+    const protocolSelect = document.getElementById('protocol');
+    const currentProtocol = protocolSelect ? protocolSelect.value : 'ftp';
+    
+    // Define required fields based on protocol
+    let requiredFields = ['name', 'host'];
+    
+    // Add protocol-specific required fields
+    if (currentProtocol === 'nfs') {
+        requiredFields.push('nfs_export_path');
+    } else {
+        requiredFields.push('username');
+        // Only require password for new sites (when no site_id hidden field exists)
+        const siteIdInput = document.querySelector('input[name="site_id"]');
+        if (!siteIdInput) {
+            requiredFields.push('password');
+        }
+    }
+    
     // Validate required fields
-    const requiredFields = ['name', 'host', 'username', 'password'];
     requiredFields.forEach(field => {
         const input = document.getElementById(field);
         if (input && !input.value.trim()) {
-            showFieldError(input, `${field.charAt(0).toUpperCase() + field.slice(1)} is required`);
+            const fieldName = field === 'nfs_export_path' ? 'Export Path' : field.charAt(0).toUpperCase() + field.slice(1);
+            showFieldError(input, `${fieldName} is required`);
             isValid = false;
-        } else {
+        } else if (input) {
             clearFieldError(input);
         }
     });
