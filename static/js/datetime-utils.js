@@ -46,26 +46,46 @@ function formatLocalDateTime(utcDateString, options = {}) {
 
 // Function to format just the date
 function formatLocalDate(utcDateString) {
-    return formatLocalDateTime(utcDateString, {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        timeZoneName: undefined
-    });
+    if (!utcDateString || utcDateString === '') return '-';
+    
+    try {
+        let utcDate;
+        if (utcDateString.includes('T')) {
+            utcDate = new Date(utcDateString.endsWith('Z') ? utcDateString : utcDateString + 'Z');
+        } else {
+            utcDate = new Date(utcDateString + ' UTC');
+        }
+        
+        if (isNaN(utcDate.getTime())) {
+            return utcDateString;
+        }
+        
+        return utcDate.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+    } catch (error) {
+        return utcDateString;
+    }
 }
 
 // Function to format just the time
 function formatLocalTime(utcDateString) {
-    return formatLocalDateTime(utcDateString, {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-        year: undefined,
-        month: undefined,
-        day: undefined,
-        timeZoneName: undefined
-    });
+    if (!utcDateString || utcDateString === '') return '-';
+    
+    try {
+        let utcDate;
+        if (utcDateString.includes('T')) {
+            utcDate = new Date(utcDateString.endsWith('Z') ? utcDateString : utcDateString + 'Z');
+        } else {
+            utcDate = new Date(utcDateString + ' UTC');
+        }
+        
+        if (isNaN(utcDate.getTime())) {
+            return utcDateString;
+        }
+        
+        return utcDate.toLocaleTimeString('en-GB', { hour12: false }); // HH:MM:SS format
+    } catch (error) {
+        return utcDateString;
+    }
 }
 
 // Function to get user's timezone
@@ -95,12 +115,20 @@ function convertAllDateTimes() {
                     break;
                 case 'full':
                 default:
-                    formattedDateTime = formatLocalDateTime(utcDateTime);
+                    formattedDateTime = formatLocalDateTime(utcDateTime, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
                     break;
             }
             
             element.textContent = formattedDateTime;
-            element.setAttribute('title', `UTC: ${utcDateTime} | Local: ${formattedDateTime}`);
+            element.setAttribute('title', `Local time: ${formattedDateTime}`);
         }
     });
     
@@ -110,7 +138,7 @@ function convertAllDateTimes() {
         if (utcDate && utcDate !== '') {
             const formattedDate = formatLocalDate(utcDate);
             element.textContent = formattedDate;
-            element.setAttribute('title', `UTC: ${utcDate} | Local: ${formattedDate}`);
+            element.setAttribute('title', `Local date: ${formattedDate}`);
         }
     });
     
@@ -120,7 +148,7 @@ function convertAllDateTimes() {
         if (utcTime && utcTime !== '') {
             const formattedTime = formatLocalTime(utcTime);
             element.textContent = formattedTime;
-            element.setAttribute('title', `UTC: ${utcTime} | Local: ${formattedTime}`);
+            element.setAttribute('title', `Local time: ${formattedTime}`);
         }
     });
 }
