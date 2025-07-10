@@ -337,10 +337,7 @@ try:
             cursor = conn.cursor()
             
             # Migration 1: Move advanced download columns from sites to jobs table
-            cursor.execute(\"\"\"
-                SELECT column_name FROM information_schema.columns 
-                WHERE table_name = 'sites' AND column_name = 'enable_recursive_download'
-            \"\"\")
+            cursor.execute(\\\"SELECT column_name FROM information_schema.columns WHERE table_name = 'sites' AND column_name = 'enable_recursive_download'\\\")
             
             if cursor.fetchone():
                 print('Migrating advanced download features from site-level to job-level...')
@@ -354,10 +351,7 @@ try:
                 print('Removed old site-level advanced download columns')
             
             # Migration 2: Add new job-level advanced download columns
-            cursor.execute(\"\"\"
-                SELECT column_name FROM information_schema.columns 
-                WHERE table_name = 'jobs' AND column_name = 'enable_recursive_download'
-            \"\"\")
+            cursor.execute(\\\"SELECT column_name FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'enable_recursive_download'\\\")
             
             if not cursor.fetchone():
                 print('Adding job-level advanced download feature columns...')

@@ -1,0 +1,12 @@
+[INFO] Initializing database tables...
+  File "<string>", line 23
+    cursor.execute(
+                  ^
+SyntaxError: '(' was never closed
+bash: line 24: SELECT: command not found
+bash: line 25: WHERE: command not found
+bash: line 40: $')\n            \n            if cursor.fetchone():\n                print(\'Migrating advanced download features from site-level to job-level...\')\n                \n                # Remove old site-level columns (they were moved to job-level)\n                cursor.execute(\'ALTER TABLE sites DROP COLUMN IF EXISTS enable_recursive_download;\')\n                cursor.execute(\'ALTER TABLE sites DROP COLUMN IF EXISTS enable_duplicate_renaming;\')\n                cursor.execute(\'ALTER TABLE sites DROP COLUMN IF EXISTS use_date_folders;\')\n                cursor.execute(\'ALTER TABLE sites DROP COLUMN IF EXISTS date_folder_format;\')\n                \n                print(\'Removed old site-level advanced download columns\')\n            \n            # Migration 2: Add new job-level advanced download columns\n            cursor.execute(': command not found
+bash: line 41: SELECT: command not found
+bash: line 42: WHERE: command not found
+bash: line 69: $')\n            \n            if not cursor.fetchone():\n                print(\'Adding job-level advanced download feature columns...\')\n                \n                # Add new job-level advanced download columns\n                cursor.execute(\'ALTER TABLE jobs ADD COLUMN enable_recursive_download BOOLEAN DEFAULT FALSE;\')\n                cursor.execute(\'ALTER TABLE jobs ADD COLUMN enable_duplicate_renaming BOOLEAN DEFAULT FALSE;\')\n                cursor.execute(\'ALTER TABLE jobs ADD COLUMN use_date_folders BOOLEAN DEFAULT FALSE;\')\n                cursor.execute(\'ALTER TABLE jobs ADD COLUMN date_folder_format VARCHAR(20) DEFAULT \'\'YYYY-MM-DD\'\';\')\n                \n                conn.commit()\n                print(\'Job-level advanced download feature columns added successfully\')\n            else:\n                print(\'Job-level advanced download feature columns already exist\')\n                \n            cursor.close()\n            conn.close()\n            \n        except Exception as e:\n            print(f\'Database migration warning: {e}\')\n            print(\'Continuing with deployment...\')\n            \nexcept Exception as e:\n    print(f\'Database initialization failed: {e}\')\n    print(\'Continuing with deployment...\')\n': command not found
+[SUCCESS] Database initialized
