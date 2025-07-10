@@ -92,6 +92,65 @@ class FTPBrowser(FTPClient):
                     except Exception as inner_e:
                         self.disconnect()
                         return {'success': False, 'error': f'Failed to list directory: {str(inner_e)}'}
+            
+            elif self.protocol == 'nfs':
+                # NFS browsing using the NFS client
+                from nfs_client import NFSClient
+                
+                # Create NFS client with the same parameters
+                nfs_client = NFSClient(
+                    self.host,
+                    getattr(self, 'nfs_export_path', '/'),
+                    getattr(self, 'nfs_version', '4'),
+                    getattr(self, 'nfs_mount_options', ''),
+                    getattr(self, 'nfs_auth_method', 'sys')
+                )
+                
+                try:
+                    # Mount the NFS share
+                    if not nfs_client.mount():
+                        return {'success': False, 'error': 'Failed to mount NFS share'}
+                    
+                    # List files using NFS client
+                    result = nfs_client.list_files(remote_path)
+                    
+                    if result['success']:
+                        for file_info in result['files']:
+                            # Convert NFS file info to browser format
+                            name = file_info['name']
+                            is_dir = file_info['type'] == 'dir'
+                            size = file_info['size']
+                            
+                            # Parse modification time
+                            modified = None
+                            try:
+                                modified = datetime.fromisoformat(file_info['modify'])
+                            except:
+                                pass
+                            
+                            # Construct proper path
+                            if current_path == '/' or current_path == '.':
+                                full_path = f'/{name}'
+                            else:
+                                full_path = f"{current_path.rstrip('/')}/{name}"
+                            
+                            items.append({
+                                'name': name,
+                                'is_directory': is_dir,
+                                'size': size,
+                                'size_formatted': self._format_size(size),
+                                'permissions': 'drwxr-xr-x' if is_dir else '-rw-r--r--',
+                                'modified': modified.isoformat() if modified else '',
+                                'modified_formatted': modified.strftime('%Y-%m-%d %H:%M') if modified else '',
+                                'path': full_path,
+                                'type': 'directory' if is_dir else 'file'
+                            })
+                    else:
+                        return {'success': False, 'error': result.get('error', 'Failed to list NFS directory')}
+                        
+                finally:
+                    # Always unmount when done
+                    nfs_client.unmount()
                         
             elif self.protocol == 'sftp':
                 # Get current directory if using relative path
@@ -182,6 +241,71 @@ class FTPBrowser(FTPClient):
     def get_file_content_preview(self, remote_path, max_size=1024):
         """Get a preview of text file content"""
         try:
+            if self.protocol == 'nfs':
+                # NFS file preview
+                from nfs_client import NFSClient
+                
+                nfs_client = NFSClient(
+                    self.host,
+                    getattr(self, 'nfs_export_path', '/'),
+                    getattr(self, 'nfs_version', '4'),
+                    getattr(self, 'nfs_mount_options', ''),
+                    getattr(self, 'nfs_auth_method', 'sys')
+                )
+                
+                try:
+                    # Mount the NFS share
+                    if not nfs_client.mount():
+                        return {'success': False, 'error': 'Failed to mount NFS share for preview'}
+                    
+                    # Convert remote path to local mount path
+                    if remote_path.startswith('/'):
+                        remote_path = remote_path[1:]
+                    
+                    full_path = os.path.join(nfs_client.mount_point, remote_path) if remote_path else nfs_client.mount_point
+                    
+                    if not os.path.exists(full_path):
+                        return {'success': False, 'error': f'File does not exist: {remote_path}'}
+                    
+                    if os.path.isdir(full_path):
+                        return {'success': False, 'error': 'Cannot preview directory'}
+                    
+                    # Check file size
+                    file_size = os.path.getsize(full_path)
+                    if file_size > max_size:
+                        return {
+                            'success': True,
+                            'content': f'File too large to preview ({file_size} bytes). Maximum preview size is {max_size} bytes.',
+                            'is_text': True
+                        }
+                    
+                    # Try to read file content
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as f:
+                            content = f.read(max_size)
+                        return {'success': True, 'content': content, 'is_text': True}
+                    except UnicodeDecodeError:
+                        # Try other encodings
+                        for encoding in ['latin1', 'ascii', 'utf-16']:
+                            try:
+                                with open(full_path, 'r', encoding=encoding) as f:
+                                    content = f.read(max_size)
+                                return {'success': True, 'content': content, 'is_text': True}
+                            except:
+                                continue
+                        # If all encodings fail, it's likely a binary file
+                        return {
+                            'success': True,
+                            'content': f'Binary file ({file_size} bytes). Cannot display content.',
+                            'is_text': False
+                        }
+                        
+                except Exception as e:
+                    return {'success': False, 'error': str(e)}
+                finally:
+                    nfs_client.unmount()
+            
+            # Handle FTP/SFTP protocols
             if not self.connect():
                 return {'success': False, 'error': 'Connection failed'}
             
