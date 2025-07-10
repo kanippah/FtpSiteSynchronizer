@@ -203,19 +203,30 @@
     border-radius: 0.5rem;
     padding: 2rem;
     text-align: center;
-    background-color: white !important;
-    color: #212529 !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: var(--bs-light) !important;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .file-drop-zone:hover {
-    border-color: white !important;
-    background-color: var(--bs-primary-bg-subtle);
+    border-color: var(--bs-primary) !important;
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    color: white !important;
 }
 
 .file-drop-zone.dragover {
-    border-color: white !important;
-    background-color: var(--bs-success-bg-subtle);
+    border-color: var(--bs-success) !important;
+    background-color: rgba(25, 135, 84, 0.1) !important;
+    color: white !important;
+}
+
+.file-drop-zone .text-muted {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.file-drop-zone .btn {
+    margin-top: 0.5rem;
 }
 
 /* Log viewer */
