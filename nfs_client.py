@@ -38,6 +38,15 @@ class NFSClient:
                 cmd.extend(['-o', mount_options])
             cmd.extend([nfs_server, self.mount_point])
             
+            # Test NFS server accessibility first
+            try:
+                result = subprocess.run(['showmount', '-e', self.host], 
+                                      capture_output=True, text=True, timeout=15)
+                if result.returncode != 0:
+                    logger.warning(f"NFS server {self.host} may not be accessible: {result.stderr}")
+            except Exception as e:
+                logger.warning(f"Cannot test NFS server accessibility: {str(e)}")
+            
             # Execute mount command
             logger.info(f"Executing NFS mount command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -227,9 +236,21 @@ class NFSClient:
     def test_connection(self):
         """Test NFS connection by mounting and unmounting"""
         try:
+            # First test if we can see the NFS exports
+            try:
+                result = subprocess.run(['showmount', '-e', self.host], 
+                                      capture_output=True, text=True, timeout=15)
+                if result.returncode == 0:
+                    logger.info(f"NFS exports available on {self.host}: {result.stdout}")
+                else:
+                    logger.warning(f"Cannot list NFS exports on {self.host}: {result.stderr}")
+            except Exception as e:
+                logger.warning(f"Cannot check NFS exports: {str(e)}")
+            
+            # Try to mount
             if self.mount():
                 self.unmount()
-                return {'success': True}
+                return {'success': True, 'message': 'NFS connection successful'}
             else:
                 return {'success': False, 'error': 'Failed to mount NFS share'}
         except Exception as e:
