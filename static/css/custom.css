@@ -426,6 +426,30 @@
     font-size: 0.875rem;
 }
 
+/* Fix for radio button group styling */
+.btn-check:checked + .btn-outline-secondary {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    color: white !important;
+}
+
+.btn-check:checked + .btn-outline-secondary:hover {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    color: white !important;
+}
+
+.btn-outline-secondary {
+    color: var(--bs-light) !important;
+    border-color: white !important;
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--bs-secondary) !important;
+    border-color: var(--bs-secondary) !important;
+    color: white !important;
+}
+
 /* Pagination enhancements */
 .pagination-info {
     font-size: 0.875rem;
