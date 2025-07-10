@@ -21,6 +21,13 @@ class Site(db.Model):
     nfs_version = db.Column(db.String(10), nullable=True, default='4')  # NFS version (3, 4, 4.1, 4.2)
     nfs_mount_options = db.Column(db.String(200), nullable=True)  # Custom mount options
     nfs_auth_method = db.Column(db.String(20), nullable=True, default='sys')  # sys, krb5, krb5i, krb5p
+    
+    # Advanced download options
+    enable_recursive_download = db.Column(db.Boolean, default=False)  # Traverse all subfolders and download files only
+    enable_duplicate_renaming = db.Column(db.Boolean, default=False)  # Auto-rename duplicate files with _1, _2, etc.
+    use_date_folders = db.Column(db.Boolean, default=False)  # Create date-based folders for downloads
+    date_folder_format = db.Column(db.String(20), default='YYYY-MM-DD')  # Date format for folder creation
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

@@ -353,3 +353,115 @@ class FTPClient:
             
         except Exception as e:
             return {'success': False, 'error': str(e)}
+    
+    def download_files_enhanced(self, remote_path, local_path, site=None):
+        """Enhanced download with advanced options from site configuration"""
+        try:
+            # Use enhanced options if site is provided
+            enable_recursive = site.enable_recursive_download if site else False
+            enable_duplicate_renaming = site.enable_duplicate_renaming if site else False
+            use_date_folders = site.use_date_folders if site else False
+            date_folder_format = site.date_folder_format if site else 'YYYY-MM-DD'
+            
+            files_processed = 0
+            bytes_transferred = 0
+            log_messages = []
+            processed_files = set()  # Track files for duplicate detection
+            
+            def get_unique_filename(file_path):
+                """Generate unique filename if duplicate renaming is enabled"""
+                if not enable_duplicate_renaming:
+                    return file_path
+                
+                if file_path not in processed_files:
+                    processed_files.add(file_path)
+                    return file_path
+                
+                # Generate numbered variants
+                base_name, ext = os.path.splitext(file_path)
+                counter = 1
+                while True:
+                    new_path = f"{base_name}_{counter}{ext}"
+                    if new_path not in processed_files:
+                        processed_files.add(new_path)
+                        return new_path
+                    counter += 1
+            
+            def get_date_folder_path(base_path):
+                """Generate date-based folder path if enabled"""
+                if not use_date_folders:
+                    return base_path
+                
+                from datetime import datetime
+                today = datetime.now()
+                
+                # Convert format string to Python strftime
+                format_map = {
+                    'YYYY': '%Y',
+                    'MM': '%m', 
+                    'DD': '%d',
+                    'YY': '%y'
+                }
+                
+                python_format = date_folder_format
+                for old, new in format_map.items():
+                    python_format = python_format.replace(old, new)
+                
+                date_folder = today.strftime(python_format)
+                return os.path.join(base_path, date_folder)
+            
+            def download_from_directory(remote_dir, local_dir, is_recursive=False):
+                """Recursively download files from directory"""
+                files_list = self.list_files(remote_dir)
+                if not files_list['success']:
+                    return files_list
+                
+                nonlocal files_processed, bytes_transferred
+                
+                for file_info in files_list['files']:
+                    if file_info['type'] == 'file':
+                        # Handle file downloads
+                        remote_file_path = os.path.join(remote_dir, file_info['name']).replace('\\', '/')
+                        
+                        # Apply date folder if enabled
+                        target_local_dir = get_date_folder_path(local_dir)
+                        
+                        # Create target directory
+                        os.makedirs(target_local_dir, exist_ok=True)
+                        
+                        # Handle duplicates
+                        local_file_path = os.path.join(target_local_dir, file_info['name'])
+                        local_file_path = get_unique_filename(local_file_path)
+                        
+                        result = self.download_file(remote_file_path, local_file_path)
+                        
+                        if result['success']:
+                            files_processed += 1
+                            bytes_transferred += result['bytes_transferred']
+                            log_messages.append(f"Downloaded: {file_info['name']} -> {os.path.relpath(local_file_path, local_path)}")
+                        else:
+                            log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
+                    
+                    elif file_info['type'] == 'directory' and enable_recursive:
+                        # Recursively download from subdirectories (flattened structure)
+                        subdir_remote = os.path.join(remote_dir, file_info['name']).replace('\\', '/')
+                        # Note: For flattened structure, we use the same local directory
+                        download_from_directory(subdir_remote, local_dir, True)
+                
+                return {'success': True}
+            
+            # Start the download process
+            result = download_from_directory(remote_path, local_path)
+            
+            if result['success']:
+                return {
+                    'success': True,
+                    'files_processed': files_processed,
+                    'bytes_transferred': bytes_transferred,
+                    'log': log_messages
+                }
+            else:
+                return result
+                
+        except Exception as e:
+            return {'success': False, 'error': str(e)}

@@ -16,6 +16,9 @@ function initializeSitesPage() {
     
     // Initialize delete confirmations
     initializeDeleteConfirmations();
+    
+    // Initialize advanced options handlers
+    initializeAdvancedOptionsHandlers();
 }
 
 function initializeFormValidation() {
@@ -316,6 +319,21 @@ function initializeAutoSave() {
         // Clear saved data on successful submit
         form.addEventListener('submit', function() {
             localStorage.removeItem('siteForm');
+        });
+    }
+}
+
+function initializeAdvancedOptionsHandlers() {
+    const useDateFoldersCheckbox = document.getElementById('use_date_folders');
+    const dateFolderFormatField = document.getElementById('date_folder_format_field');
+    
+    if (useDateFoldersCheckbox && dateFolderFormatField) {
+        // Initialize visibility based on current state
+        dateFolderFormatField.style.display = useDateFoldersCheckbox.checked ? 'block' : 'none';
+        
+        // Toggle date format field visibility
+        useDateFoldersCheckbox.addEventListener('change', function() {
+            dateFolderFormatField.style.display = this.checked ? 'block' : 'none';
         });
     }
 }

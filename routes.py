@@ -92,6 +92,12 @@ def new_site():
             nfs_mount_options = request.form.get('nfs_mount_options', '') if protocol == 'nfs' else None
             nfs_auth_method = request.form.get('nfs_auth_method', 'sys') if protocol == 'nfs' else None
             
+            # Advanced download options
+            enable_recursive_download = bool(request.form.get('enable_recursive_download'))
+            enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
+            use_date_folders = bool(request.form.get('use_date_folders'))
+            date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
+            
             # Encrypt password (not needed for NFS but keep for consistency)
             encrypted_password = encrypt_password(password) if password else encrypt_password('')
             
@@ -108,7 +114,11 @@ def new_site():
                 nfs_export_path=nfs_export_path,
                 nfs_version=nfs_version,
                 nfs_mount_options=nfs_mount_options,
-                nfs_auth_method=nfs_auth_method
+                nfs_auth_method=nfs_auth_method,
+                enable_recursive_download=enable_recursive_download,
+                enable_duplicate_renaming=enable_duplicate_renaming,
+                use_date_folders=use_date_folders,
+                date_folder_format=date_folder_format
             )
             
             db.session.add(site)
@@ -146,6 +156,12 @@ def edit_site(site_id):
                 site.nfs_version = request.form.get('nfs_version', '4')
                 site.nfs_mount_options = request.form.get('nfs_mount_options', '')
                 site.nfs_auth_method = request.form.get('nfs_auth_method', 'sys')
+            
+            # Advanced download options
+            site.enable_recursive_download = bool(request.form.get('enable_recursive_download'))
+            site.enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
+            site.use_date_folders = bool(request.form.get('use_date_folders'))
+            site.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
             
             # Update password if provided
             if request.form['password']:

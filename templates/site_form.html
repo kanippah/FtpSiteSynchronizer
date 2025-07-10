@@ -111,6 +111,58 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Advanced Download Options -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="mt-3 mb-3">Advanced Download Options</h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="enable_recursive_download" name="enable_recursive_download" {{ 'checked' if site and site.enable_recursive_download else '' }}>
+                                        <label class="form-check-label" for="enable_recursive_download">
+                                            <strong>Enable Recursive File Download</strong>
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Traverse all subfolders and download only files (flattens folder structure)</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="enable_duplicate_renaming" name="enable_duplicate_renaming" {{ 'checked' if site and site.enable_duplicate_renaming else '' }}>
+                                        <label class="form-check-label" for="enable_duplicate_renaming">
+                                            <strong>Auto-Rename Duplicate Files</strong>
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Automatically rename duplicate files by adding _1, _2, etc.</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="use_date_folders" name="use_date_folders" {{ 'checked' if site and site.use_date_folders else '' }}>
+                                        <label class="form-check-label" for="use_date_folders">
+                                            <strong>Create Date-Based Folders</strong>
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Create folders using download date (e.g., 2025-01-10)</div>
+                                </div>
+                                
+                                <div class="mb-3" id="date_folder_format_field" style="display: none;">
+                                    <label for="date_folder_format" class="form-label">Date Format</label>
+                                    <select class="form-select" id="date_folder_format" name="date_folder_format">
+                                        <option value="YYYY-MM-DD" {{ 'selected' if site and site.date_folder_format == 'YYYY-MM-DD' else 'selected' }}>2025-01-10</option>
+                                        <option value="YYYY-MM" {{ 'selected' if site and site.date_folder_format == 'YYYY-MM' else '' }}>2025-01</option>
+                                        <option value="YYYYMMDD" {{ 'selected' if site and site.date_folder_format == 'YYYYMMDD' else '' }}>20250110</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- NFS-specific Settings -->

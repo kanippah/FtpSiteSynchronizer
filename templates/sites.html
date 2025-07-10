@@ -29,6 +29,7 @@
                             <th>Remote Path</th>
                             <th>Transfer Type</th>
                             <th>NFS Details</th>
+                            <th>Advanced Options</th>
                             <th>Jobs</th>
                             <th>Created</th>
                             <th>Actions</th>
@@ -76,6 +77,22 @@
                                 {% else %}
                                     <span class="text-muted">N/A</span>
                                 {% endif %}
+                            </td>
+                            <td>
+                                <div class="small">
+                                    {% if site.enable_recursive_download %}
+                                        <div><i data-feather="chevrons-down" class="me-1" style="width: 0.8rem; height: 0.8rem;"></i> Recursive Download</div>
+                                    {% endif %}
+                                    {% if site.enable_duplicate_renaming %}
+                                        <div><i data-feather="copy" class="me-1" style="width: 0.8rem; height: 0.8rem;"></i> Auto-rename Duplicates</div>
+                                    {% endif %}
+                                    {% if site.use_date_folders %}
+                                        <div><i data-feather="calendar" class="me-1" style="width: 0.8rem; height: 0.8rem;"></i> Date Folders ({{ site.date_folder_format }})</div>
+                                    {% endif %}
+                                    {% if not site.enable_recursive_download and not site.enable_duplicate_renaming and not site.use_date_folders %}
+                                        <span class="text-muted">None</span>
+                                    {% endif %}
+                                </div>
                             </td>
                             <td>
                                 <span class="badge bg-info">{{ site.jobs|length }} job(s)</span>

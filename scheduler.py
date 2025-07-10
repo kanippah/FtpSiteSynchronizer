@@ -212,11 +212,20 @@ def execute_download_job(job, job_log):
                         else:
                             log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
             else:
-                # Regular download without filename filtering
-                if site.transfer_type == 'files':
-                    result = client.download_all_files(site.remote_path, local_path)
+                # Check if any advanced download features are enabled
+                has_advanced_features = (site.enable_recursive_download or 
+                                       site.enable_duplicate_renaming or 
+                                       site.use_date_folders)
+                
+                if has_advanced_features:
+                    # Use enhanced download method
+                    result = client.download_files_enhanced(site.remote_path, local_path, site)
                 else:
-                    result = client.download_folder(site.remote_path, local_path)
+                    # Regular download without advanced features
+                    if site.transfer_type == 'files':
+                        result = client.download_all_files(site.remote_path, local_path)
+                    else:
+                        result = client.download_folder(site.remote_path, local_path)
                 
                 if result['success']:
                     files_processed = result.get('files_processed', 0)
@@ -289,10 +298,20 @@ def execute_download_job(job, job_log):
         
         else:
             # Download specific files/folders
-            if site.transfer_type == 'files':
-                result = client.download_files(site.remote_path, local_path)
+            # Check if any advanced download features are enabled
+            has_advanced_features = (site.enable_recursive_download or 
+                                   site.enable_duplicate_renaming or 
+                                   site.use_date_folders)
+            
+            if has_advanced_features:
+                # Use enhanced download method
+                result = client.download_files_enhanced(site.remote_path, local_path, site)
             else:
-                result = client.download_folder(site.remote_path, local_path)
+                # Regular download without advanced features
+                if site.transfer_type == 'files':
+                    result = client.download_files(site.remote_path, local_path)
+                else:
+                    result = client.download_folder(site.remote_path, local_path)
             
             if result['success']:
                 files_processed = result.get('files_processed', 0)
