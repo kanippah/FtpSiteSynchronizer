@@ -100,16 +100,58 @@ function clearFieldError(input) {
 function initializeProtocolHandlers() {
     const protocolSelect = document.getElementById('protocol');
     const portInput = document.getElementById('port');
+    const ftpSftpFields = document.querySelector('.ftp-sftp-fields');
+    const nfsFields = document.querySelector('.nfs-fields');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const nfsExportInput = document.getElementById('nfs_export_path');
     
-    if (protocolSelect && portInput) {
+    if (protocolSelect) {
+        // Initialize visibility based on current selection
+        toggleProtocolFields(protocolSelect.value);
+        
         protocolSelect.addEventListener('change', function() {
+            const protocol = this.value;
+            
             // Set default port based on protocol
-            if (this.value === 'ftp') {
-                portInput.value = '21';
-            } else if (this.value === 'sftp') {
-                portInput.value = '22';
+            if (portInput) {
+                if (protocol === 'ftp') {
+                    portInput.value = '21';
+                } else if (protocol === 'sftp') {
+                    portInput.value = '22';
+                } else if (protocol === 'nfs') {
+                    portInput.value = '2049';
+                }
             }
+            
+            // Toggle field visibility
+            toggleProtocolFields(protocol);
         });
+    }
+    
+    function toggleProtocolFields(protocol) {
+        if (ftpSftpFields && nfsFields) {
+            if (protocol === 'nfs') {
+                ftpSftpFields.style.display = 'none';
+                nfsFields.style.display = 'block';
+                
+                // Make NFS fields required, FTP/SFTP fields optional
+                if (usernameInput) usernameInput.removeAttribute('required');
+                if (passwordInput) passwordInput.removeAttribute('required');
+                if (nfsExportInput) nfsExportInput.setAttribute('required', 'required');
+            } else {
+                ftpSftpFields.style.display = 'block';
+                nfsFields.style.display = 'none';
+                
+                // Make FTP/SFTP fields required, NFS fields optional
+                if (usernameInput) usernameInput.setAttribute('required', 'required');
+                if (passwordInput && !passwordInput.closest('form').querySelector('input[name="site_id"]')) {
+                    // Only require password for new sites, not edits
+                    passwordInput.setAttribute('required', 'required');
+                }
+                if (nfsExportInput) nfsExportInput.removeAttribute('required');
+            }
+        }
     }
 }
 

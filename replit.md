@@ -1,8 +1,8 @@
-# FTP/SFTP Manager
+# FTP/SFTP/NFS Manager
 
 ## Overview
 
-This is a Flask-based web application for managing FTP and SFTP file transfers. The system provides a web interface for configuring FTP/SFTP sites, creating scheduled jobs for file transfers, and monitoring transfer activities through logs and notifications.
+This is a Flask-based web application for managing FTP, SFTP, and NFS file transfers. The system provides a web interface for configuring FTP/SFTP/NFS sites, creating scheduled jobs for file transfers, and monitoring transfer activities through logs and notifications.
 
 ## User Preferences
 
@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with SQLAlchemy ORM
 - **Job Scheduling**: APScheduler (Advanced Python Scheduler) with background thread execution
 - **Security**: Cryptography library for password encryption using Fernet symmetric encryption
-- **FTP/SFTP Support**: Built-in ftplib for FTP and paramiko for SFTP connections
+- **Protocol Support**: Built-in ftplib for FTP, paramiko for SFTP, and native NFS mount operations
 
 ### Frontend Architecture
 - **Template Engine**: Jinja2 (Flask's default templating)
@@ -25,8 +25,8 @@ Preferred communication style: Simple, everyday language.
 - **Charts**: Chart.js for dashboard visualizations
 
 ### Database Schema
-- **Sites Table**: Stores FTP/SFTP connection details with encrypted passwords
-- **Jobs Table**: Manages scheduled transfer jobs with cron expressions
+- **Sites Table**: Stores FTP/SFTP/NFS connection details with encrypted passwords and NFS-specific configuration
+- **Jobs Table**: Manages scheduled transfer jobs with cron expressions supporting all protocols
 - **Job Logs Table**: Records execution history and results
 - **Settings Table**: System configuration with encrypted sensitive values
 - **System Logs Table**: Application-wide logging for debugging and monitoring
@@ -34,23 +34,25 @@ Preferred communication style: Simple, everyday language.
 ## Key Components
 
 ### Core Services
-1. **FTP Client (`ftp_client.py`)**: Unified client supporting both FTP and SFTP protocols
-2. **Email Service (`email_service.py`)**: SMTP-based notification system for job status updates
-3. **Crypto Utils (`crypto_utils.py`)**: Password encryption/decryption using PBKDF2 key derivation
-4. **Scheduler (`scheduler.py`)**: Job execution engine with cron-based scheduling
-5. **Utils (`utils.py`)**: Helper functions for settings management and system logging
+1. **FTP Client (`ftp_client.py`)**: Unified client supporting FTP, SFTP, and NFS protocols
+2. **NFS Client (`nfs_client.py`)**: Dedicated NFS client with mount/unmount operations and filesystem access
+3. **Email Service (`email_service.py`)**: SMTP-based notification system for job status updates
+4. **Crypto Utils (`crypto_utils.py`)**: Password encryption/decryption using PBKDF2 key derivation
+5. **Scheduler (`scheduler.py`)**: Job execution engine with cron-based scheduling supporting all protocols
+6. **Utils (`utils.py`)**: Helper functions for settings management and system logging
 
 ### Web Interface
 1. **Dashboard**: System overview with job statistics and recent activity
-2. **Sites Management**: CRUD operations for FTP/SFTP site configurations
-3. **Jobs Management**: Create, schedule, and monitor transfer jobs
+2. **Sites Management**: CRUD operations for FTP/SFTP/NFS site configurations with protocol-specific fields
+3. **Jobs Management**: Create, schedule, and monitor transfer jobs across all protocols
 4. **Logs Viewer**: Historical job execution and system logs
 5. **Settings**: SMTP configuration and system preferences
 6. **Upload Interface**: Direct file upload to configured sites
+7. **File Browser**: Browse and download files from FTP/SFTP/NFS sites
 
 ### Models
-- **Site**: FTP/SFTP connection configuration with encrypted credentials
-- **Job**: Scheduled transfer tasks with flexible scheduling options
+- **Site**: FTP/SFTP/NFS connection configuration with encrypted credentials and NFS-specific fields
+- **Job**: Scheduled transfer tasks with flexible scheduling options supporting all protocols
 - **JobLog**: Execution history with detailed status tracking
 - **Settings**: Key-value configuration store with encryption support
 - **SystemLog**: Application-wide logging for system events
@@ -60,8 +62,8 @@ Preferred communication style: Simple, everyday language.
 ### Job Execution Flow
 1. APScheduler triggers job execution based on cron expressions
 2. Job retrieves site configuration and decrypts credentials
-3. FTP/SFTP client establishes connection to source/target sites
-4. File transfer operations execute with progress tracking
+3. Protocol-specific client (FTP/SFTP/NFS) establishes connection to source/target sites
+4. File transfer operations execute with progress tracking (NFS uses temporary mount points)
 5. Results logged to database and email notifications sent
 6. Job status updated for dashboard display
 
@@ -70,6 +72,27 @@ Preferred communication style: Simple, everyday language.
 2. Encryption key derived from environment variables or PBKDF2
 3. Settings table supports encrypted storage for sensitive configuration
 4. Session management through Flask's built-in session handling
+
+## NFS Implementation Details
+
+### Architecture
+- **NFS Client (`nfs_client.py`)**: Dedicated module for NFS operations using system mount/umount commands
+- **Temporary Mount Points**: Each NFS operation creates a temporary mount point for secure file access
+- **Mount Options**: Configurable NFS version (3, 4, 4.1, 4.2), authentication methods, and custom mount options
+- **Authentication**: Support for AUTH_SYS, Kerberos v5 (krb5, krb5i, krb5p) authentication methods
+- **Error Handling**: Comprehensive error handling with automatic cleanup of mount points
+
+### Database Extensions
+- **NFS Export Path**: Server-side export path configuration
+- **NFS Version**: Protocol version selection with NFSv4 as default
+- **Mount Options**: Custom mount options for advanced configurations
+- **Authentication Method**: Security authentication method selection
+
+### Security Considerations
+- **Temporary Mounts**: All mount points are temporary and automatically cleaned up
+- **Privilege Requirements**: Requires sudo privileges for mount/umount operations
+- **Network Security**: Supports encrypted NFSv4 and Kerberos authentication
+- **Path Validation**: Input validation for export paths and mount options
 
 ## External Dependencies
 

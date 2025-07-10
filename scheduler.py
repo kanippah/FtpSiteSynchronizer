@@ -160,7 +160,17 @@ def execute_download_job(job, job_log):
         site = job.site
         password = decrypt_password(site.password_encrypted)
         
-        client = FTPClient(site.protocol, site.host, site.port, site.username, password)
+        # Build client parameters with NFS support
+        client_kwargs = {}
+        if site.protocol == 'nfs':
+            client_kwargs.update({
+                'nfs_export_path': site.nfs_export_path or '/',
+                'nfs_version': site.nfs_version or '4',
+                'nfs_mount_options': site.nfs_mount_options or '',
+                'nfs_auth_method': site.nfs_auth_method or 'sys'
+            })
+        
+        client = FTPClient(site.protocol, site.host, site.port, site.username, password, **client_kwargs)
         
         # Create local directory
         local_path = job.local_path or './downloads'
@@ -327,9 +337,29 @@ def execute_upload_job(job, job_log):
         source_password = decrypt_password(source_site.password_encrypted)
         target_password = decrypt_password(target_site.password_encrypted)
         
+        # Build source client parameters with NFS support
+        source_kwargs = {}
+        if source_site.protocol == 'nfs':
+            source_kwargs.update({
+                'nfs_export_path': source_site.nfs_export_path or '/',
+                'nfs_version': source_site.nfs_version or '4',
+                'nfs_mount_options': source_site.nfs_mount_options or '',
+                'nfs_auth_method': source_site.nfs_auth_method or 'sys'
+            })
+        
+        # Build target client parameters with NFS support
+        target_kwargs = {}
+        if target_site.protocol == 'nfs':
+            target_kwargs.update({
+                'nfs_export_path': target_site.nfs_export_path or '/',
+                'nfs_version': target_site.nfs_version or '4',
+                'nfs_mount_options': target_site.nfs_mount_options or '',
+                'nfs_auth_method': target_site.nfs_auth_method or 'sys'
+            })
+        
         # Create clients
-        source_client = FTPClient(source_site.protocol, source_site.host, source_site.port, source_site.username, source_password)
-        target_client = FTPClient(target_site.protocol, target_site.host, target_site.port, target_site.username, target_password)
+        source_client = FTPClient(source_site.protocol, source_site.host, source_site.port, source_site.username, source_password, **source_kwargs)
+        target_client = FTPClient(target_site.protocol, target_site.host, target_site.port, target_site.username, target_password, **target_kwargs)
         
         # Download from source first
         temp_path = f'./temp_transfer_{job.id}'

@@ -171,6 +171,11 @@
     color: var(--bs-white);
 }
 
+.protocol-nfs {
+    background-color: var(--bs-warning);
+    color: var(--bs-dark);
+}
+
 /* Dashboard stats */
 .stats-card {
     border-left: 4px solid var(--bs-primary);

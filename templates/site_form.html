@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ 'Edit Site' if site else 'Add New Site' }} - FTP/SFTP Manager{% endblock %}
+{% block title %}{{ 'Edit Site' if site else 'Add New Site' }} - FTP/SFTP/NFS Manager{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -41,6 +41,7 @@
                                         <option value="">Select Protocol</option>
                                         <option value="ftp" {{ 'selected' if site and site.protocol == 'ftp' else '' }}>FTP</option>
                                         <option value="sftp" {{ 'selected' if site and site.protocol == 'sftp' else '' }}>SFTP</option>
+                                        <option value="nfs" {{ 'selected' if site and site.protocol == 'nfs' else '' }}>NFS</option>
                                     </select>
                                 </div>
                             </div>
@@ -63,12 +64,12 @@
                                 <div class="mb-3">
                                     <label for="port" class="form-label">Port <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control" id="port" name="port" value="{{ site.port if site else '21' }}" min="1" max="65535" required>
-                                    <div class="form-text">Default: 21 (FTP), 22 (SFTP)</div>
+                                    <div class="form-text">Default: 21 (FTP), 22 (SFTP), 2049 (NFS)</div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="row">
+                        <div class="row ftp-sftp-fields">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
@@ -107,6 +108,55 @@
                                         <option value="folders" {{ 'selected' if site and site.transfer_type == 'folders' else '' }}>Folders & Files</option>
                                     </select>
                                     <div class="form-text">What to transfer during jobs</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- NFS-specific Settings -->
+                    <div class="form-section nfs-fields" style="display: none;">
+                        <h5>NFS Configuration</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nfs_export_path" class="form-label">Export Path <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nfs_export_path" name="nfs_export_path" value="{{ site.nfs_export_path if site else '/' }}">
+                                    <div class="form-text">NFS export path on the server (e.g., /exports/data)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nfs_version" class="form-label">NFS Version</label>
+                                    <select class="form-select" id="nfs_version" name="nfs_version">
+                                        <option value="3" {{ 'selected' if site and site.nfs_version == '3' else '' }}>NFSv3</option>
+                                        <option value="4" {{ 'selected' if site and site.nfs_version == '4' else 'selected' }}>NFSv4</option>
+                                        <option value="4.1" {{ 'selected' if site and site.nfs_version == '4.1' else '' }}>NFSv4.1</option>
+                                        <option value="4.2" {{ 'selected' if site and site.nfs_version == '4.2' else '' }}>NFSv4.2</option>
+                                    </select>
+                                    <div class="form-text">NFS protocol version to use</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nfs_auth_method" class="form-label">Authentication Method</label>
+                                    <select class="form-select" id="nfs_auth_method" name="nfs_auth_method">
+                                        <option value="sys" {{ 'selected' if site and site.nfs_auth_method == 'sys' else 'selected' }}>AUTH_SYS (default)</option>
+                                        <option value="krb5" {{ 'selected' if site and site.nfs_auth_method == 'krb5' else '' }}>Kerberos v5</option>
+                                        <option value="krb5i" {{ 'selected' if site and site.nfs_auth_method == 'krb5i' else '' }}>Kerberos v5 with integrity</option>
+                                        <option value="krb5p" {{ 'selected' if site and site.nfs_auth_method == 'krb5p' else '' }}>Kerberos v5 with privacy</option>
+                                    </select>
+                                    <div class="form-text">Security authentication method</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nfs_mount_options" class="form-label">Mount Options</label>
+                                    <input type="text" class="form-control" id="nfs_mount_options" name="nfs_mount_options" value="{{ site.nfs_mount_options if site else '' }}">
+                                    <div class="form-text">Additional mount options (comma-separated)</div>
                                 </div>
                             </div>
                         </div>

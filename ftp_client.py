@@ -2,16 +2,20 @@ import ftplib
 import paramiko
 import os
 import logging
+import subprocess
+import tempfile
+import shutil
 from datetime import datetime
 from pathlib import Path
 import stat
+from nfs_client import NFSClient
 
 logger = logging.getLogger(__name__)
 
 class FTPClient:
-    """Unified FTP/SFTP client"""
+    """Unified FTP/SFTP/NFS client"""
     
-    def __init__(self, protocol, host, port, username, password):
+    def __init__(self, protocol, host, port, username, password, **kwargs):
         self.protocol = protocol.lower()
         self.host = host
         self.port = port
@@ -19,6 +23,13 @@ class FTPClient:
         self.password = password
         self.connection = None
         self.transport = None
+        
+        # NFS-specific attributes
+        self.nfs_export_path = kwargs.get('nfs_export_path', '/')
+        self.nfs_version = kwargs.get('nfs_version', '4')
+        self.nfs_mount_options = kwargs.get('nfs_mount_options', '')
+        self.nfs_auth_method = kwargs.get('nfs_auth_method', 'sys')
+        self.nfs_client = None
         
     def connect(self):
         """Establish connection"""
@@ -37,6 +48,15 @@ class FTPClient:
                 transport.connect(username=self.username, password=self.password, timeout=30)
                 self.connection = paramiko.SFTPClient.from_transport(transport)
                 self.transport = transport  # Keep reference for cleanup
+            elif self.protocol == 'nfs':
+                self.nfs_client = NFSClient(
+                    host=self.host,
+                    export_path=self.nfs_export_path,
+                    nfs_version=self.nfs_version,
+                    mount_options=self.nfs_mount_options,
+                    auth_method=self.nfs_auth_method
+                )
+                return self.nfs_client.mount()
             else:
                 raise ValueError(f"Unsupported protocol: {self.protocol}")
             
@@ -55,6 +75,9 @@ class FTPClient:
                     self.connection.close()
                     if hasattr(self, 'transport') and self.transport:
                         self.transport.close()
+            elif self.protocol == 'nfs' and self.nfs_client:
+                self.nfs_client.unmount()
+                self.nfs_client = None
             self.connection = None
         except Exception as e:
             logger.error(f"Error disconnecting: {str(e)}")
@@ -73,6 +96,11 @@ class FTPClient:
     def list_files(self, remote_path='.'):
         """List files in remote directory"""
         try:
+            if self.protocol == 'nfs':
+                if not self.nfs_client:
+                    return {'success': False, 'error': 'NFS client not initialized'}
+                return self.nfs_client.list_files(remote_path)
+            
             if not self.connect():
                 return {'success': False, 'error': 'Connection failed'}
             
@@ -133,6 +161,11 @@ class FTPClient:
     def download_file(self, remote_path, local_path):
         """Download a single file"""
         try:
+            if self.protocol == 'nfs':
+                if not self.nfs_client:
+                    return {'success': False, 'error': 'NFS client not initialized'}
+                return self.nfs_client.download_file(remote_path, local_path)
+            
             if not self.connect():
                 return {'success': False, 'error': 'Connection failed'}
             
@@ -183,6 +216,11 @@ class FTPClient:
     def upload_file(self, local_path, remote_path):
         """Upload a single file"""
         try:
+            if self.protocol == 'nfs':
+                if not self.nfs_client:
+                    return {'success': False, 'error': 'NFS client not initialized'}
+                return self.nfs_client.upload_file(local_path, remote_path)
+            
             if not self.connect():
                 return {'success': False, 'error': 'Connection failed'}
             

@@ -8,13 +8,19 @@ class Site(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    protocol = db.Column(db.String(10), nullable=False)  # 'ftp' or 'sftp'
+    protocol = db.Column(db.String(10), nullable=False)  # 'ftp', 'sftp', or 'nfs'
     host = db.Column(db.String(255), nullable=False)
     port = db.Column(db.Integer, default=21)
     username = db.Column(db.String(100), nullable=False)
     password_encrypted = db.Column(LargeBinary, nullable=False)
     remote_path = db.Column(db.String(500), default='/')
     transfer_type = db.Column(db.String(20), default='files')  # 'files' or 'folders'
+    
+    # NFS-specific fields
+    nfs_export_path = db.Column(db.String(500), nullable=True)  # NFS export path on server
+    nfs_version = db.Column(db.String(10), nullable=True, default='4')  # NFS version (3, 4, 4.1, 4.2)
+    nfs_mount_options = db.Column(db.String(200), nullable=True)  # Custom mount options
+    nfs_auth_method = db.Column(db.String(20), nullable=True, default='sys')  # sys, krb5, krb5i, krb5p
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

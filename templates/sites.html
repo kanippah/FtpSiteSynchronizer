@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Sites - FTP/SFTP Manager{% endblock %}
+{% block title %}Sites - FTP/SFTP/NFS Manager{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h3">FTP/SFTP Sites</h1>
+            <h1 class="h3">FTP/SFTP/NFS Sites</h1>
             <a href="{{ url_for('new_site') }}" class="btn btn-primary">
                 <i data-feather="plus" class="me-2"></i>Add New Site
             </a>
@@ -80,8 +80,8 @@
             <div class="card">
                 <div class="card-body text-center py-5">
                     <i data-feather="server" class="text-muted mb-3" style="width: 4rem; height: 4rem;"></i>
-                    <h4 class="text-muted">No FTP/SFTP sites configured</h4>
-                    <p class="text-muted">Get started by adding your first FTP or SFTP site.</p>
+                    <h4 class="text-muted">No FTP/SFTP/NFS sites configured</h4>
+                    <p class="text-muted">Get started by adding your first FTP, SFTP, or NFS site.</p>
                     <a href="{{ url_for('new_site') }}" class="btn btn-primary">
                         <i data-feather="plus" class="me-2"></i>Add Your First Site
                     </a>

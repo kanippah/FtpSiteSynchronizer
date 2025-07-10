@@ -86,8 +86,14 @@ def new_site():
             remote_path = request.form['remote_path'] or '/'
             transfer_type = request.form['transfer_type']
             
-            # Encrypt password
-            encrypted_password = encrypt_password(password)
+            # NFS-specific fields
+            nfs_export_path = request.form.get('nfs_export_path', '/') if protocol == 'nfs' else None
+            nfs_version = request.form.get('nfs_version', '4') if protocol == 'nfs' else None
+            nfs_mount_options = request.form.get('nfs_mount_options', '') if protocol == 'nfs' else None
+            nfs_auth_method = request.form.get('nfs_auth_method', 'sys') if protocol == 'nfs' else None
+            
+            # Encrypt password (not needed for NFS but keep for consistency)
+            encrypted_password = encrypt_password(password) if password else encrypt_password('')
             
             # Create new site
             site = Site(
@@ -98,7 +104,11 @@ def new_site():
                 username=username,
                 password_encrypted=encrypted_password,
                 remote_path=remote_path,
-                transfer_type=transfer_type
+                transfer_type=transfer_type,
+                nfs_export_path=nfs_export_path,
+                nfs_version=nfs_version,
+                nfs_mount_options=nfs_mount_options,
+                nfs_auth_method=nfs_auth_method
             )
             
             db.session.add(site)
@@ -129,6 +139,13 @@ def edit_site(site_id):
             site.username = request.form['username']
             site.remote_path = request.form['remote_path'] or '/'
             site.transfer_type = request.form['transfer_type']
+            
+            # NFS-specific fields
+            if site.protocol == 'nfs':
+                site.nfs_export_path = request.form.get('nfs_export_path', '/')
+                site.nfs_version = request.form.get('nfs_version', '4')
+                site.nfs_mount_options = request.form.get('nfs_mount_options', '')
+                site.nfs_auth_method = request.form.get('nfs_auth_method', 'sys')
             
             # Update password if provided
             if request.form['password']:
@@ -177,7 +194,17 @@ def test_site(site_id):
         site = Site.query.get_or_404(site_id)
         password = decrypt_password(site.password_encrypted)
         
-        client = FTPClient(site.protocol, site.host, site.port, site.username, password)
+        # Build client parameters with NFS support
+        client_kwargs = {}
+        if site.protocol == 'nfs':
+            client_kwargs.update({
+                'nfs_export_path': site.nfs_export_path or '/',
+                'nfs_version': site.nfs_version or '4',
+                'nfs_mount_options': site.nfs_mount_options or '',
+                'nfs_auth_method': site.nfs_auth_method or 'sys'
+            })
+        
+        client = FTPClient(site.protocol, site.host, site.port, site.username, password, **client_kwargs)
         result = client.test_connection()
         
         if result['success']:
@@ -677,7 +704,17 @@ def upload_files():
             site = Site.query.get_or_404(site_id)
             password = decrypt_password(site.password_encrypted)
             
-            client = FTPClient(site.protocol, site.host, site.port, site.username, password)
+            # Build client parameters with NFS support
+            client_kwargs = {}
+            if site.protocol == 'nfs':
+                client_kwargs.update({
+                    'nfs_export_path': site.nfs_export_path or '/',
+                    'nfs_version': site.nfs_version or '4',
+                    'nfs_mount_options': site.nfs_mount_options or '',
+                    'nfs_auth_method': site.nfs_auth_method or 'sys'
+                })
+            
+            client = FTPClient(site.protocol, site.host, site.port, site.username, password, **client_kwargs)
             
             upload_results = []
             for file in files:
@@ -790,7 +827,17 @@ def browse_site(site_id, remote_path='.'):
         site = Site.query.get_or_404(site_id)
         password = decrypt_password(site.password_encrypted)
         
-        browser = FTPBrowser(site.protocol, site.host, site.port, site.username, password)
+        # Build browser parameters with NFS support
+        browser_kwargs = {}
+        if site.protocol == 'nfs':
+            browser_kwargs.update({
+                'nfs_export_path': site.nfs_export_path or '/',
+                'nfs_version': site.nfs_version or '4',
+                'nfs_mount_options': site.nfs_mount_options or '',
+                'nfs_auth_method': site.nfs_auth_method or 'sys'
+            })
+        
+        browser = FTPBrowser(site.protocol, site.host, site.port, site.username, password, **browser_kwargs)
         result = browser.browse_directory(remote_path)
         
         if not result['success']:
@@ -832,7 +879,17 @@ def download_file(site_id, remote_path):
         if not remote_path.startswith('/'):
             remote_path = '/' + remote_path
         
-        client = FTPClient(site.protocol, site.host, site.port, site.username, password)
+        # Build client parameters with NFS support
+        client_kwargs = {}
+        if site.protocol == 'nfs':
+            client_kwargs.update({
+                'nfs_export_path': site.nfs_export_path or '/',
+                'nfs_version': site.nfs_version or '4',
+                'nfs_mount_options': site.nfs_mount_options or '',
+                'nfs_auth_method': site.nfs_auth_method or 'sys'
+            })
+        
+        client = FTPClient(site.protocol, site.host, site.port, site.username, password, **client_kwargs)
         
         # Create a temporary local file
         import tempfile
@@ -887,7 +944,17 @@ def preview_file(site_id, remote_path):
         
         logger.info(f"Previewing file: {remote_path} on site {site.name}")
         
-        browser = FTPBrowser(site.protocol, site.host, site.port, site.username, password)
+        # Build browser parameters with NFS support
+        browser_kwargs = {}
+        if site.protocol == 'nfs':
+            browser_kwargs.update({
+                'nfs_export_path': site.nfs_export_path or '/',
+                'nfs_version': site.nfs_version or '4',
+                'nfs_mount_options': site.nfs_mount_options or '',
+                'nfs_auth_method': site.nfs_auth_method or 'sys'
+            })
+        
+        browser = FTPBrowser(site.protocol, site.host, site.port, site.username, password, **browser_kwargs)
         result = browser.get_file_content_preview(remote_path)
         
         logger.info(f"Preview result: {result.get('success', False)}")
