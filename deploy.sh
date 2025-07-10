@@ -330,31 +330,48 @@ try:
         db.create_all()
         print('Database initialized successfully')
         
-        # Add new columns for advanced download features if they don't exist
+        # Handle database migrations for advanced download features
         try:
             import psycopg2
             conn = psycopg2.connect(os.environ['DATABASE_URL'])
             cursor = conn.cursor()
             
-            # Check if advanced download columns exist
+            # Migration 1: Move advanced download columns from sites to jobs table
             cursor.execute(\"\"\"
                 SELECT column_name FROM information_schema.columns 
                 WHERE table_name = 'sites' AND column_name = 'enable_recursive_download'
             \"\"\")
             
-            if not cursor.fetchone():
-                print('Adding advanced download feature columns...')
+            if cursor.fetchone():
+                print('Migrating advanced download features from site-level to job-level...')
                 
-                # Add advanced download columns
-                cursor.execute('ALTER TABLE sites ADD COLUMN enable_recursive_download BOOLEAN DEFAULT FALSE;')
-                cursor.execute('ALTER TABLE sites ADD COLUMN enable_duplicate_renaming BOOLEAN DEFAULT FALSE;')
-                cursor.execute('ALTER TABLE sites ADD COLUMN use_date_folders BOOLEAN DEFAULT FALSE;')
-                cursor.execute('ALTER TABLE sites ADD COLUMN date_folder_format VARCHAR(20) DEFAULT ''YYYY-MM-DD'';')
+                # Remove old site-level columns (they were moved to job-level)
+                cursor.execute('ALTER TABLE sites DROP COLUMN IF EXISTS enable_recursive_download;')
+                cursor.execute('ALTER TABLE sites DROP COLUMN IF EXISTS enable_duplicate_renaming;')
+                cursor.execute('ALTER TABLE sites DROP COLUMN IF EXISTS use_date_folders;')
+                cursor.execute('ALTER TABLE sites DROP COLUMN IF EXISTS date_folder_format;')
+                
+                print('Removed old site-level advanced download columns')
+            
+            # Migration 2: Add new job-level advanced download columns
+            cursor.execute(\"\"\"
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'jobs' AND column_name = 'enable_recursive_download'
+            \"\"\")
+            
+            if not cursor.fetchone():
+                print('Adding job-level advanced download feature columns...')
+                
+                # Add new job-level advanced download columns
+                cursor.execute('ALTER TABLE jobs ADD COLUMN enable_recursive_download BOOLEAN DEFAULT FALSE;')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN enable_duplicate_renaming BOOLEAN DEFAULT FALSE;')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN use_date_folders BOOLEAN DEFAULT FALSE;')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN date_folder_format VARCHAR(20) DEFAULT ''YYYY-MM-DD'';')
                 
                 conn.commit()
-                print('Advanced download feature columns added successfully')
+                print('Job-level advanced download feature columns added successfully')
             else:
-                print('Advanced download feature columns already exist')
+                print('Job-level advanced download feature columns already exist')
                 
             cursor.close()
             conn.close()

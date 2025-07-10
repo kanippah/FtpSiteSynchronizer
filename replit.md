@@ -139,3 +139,12 @@ Preferred communication style: Simple, everyday language.
 - Database connection pooling for concurrent requests
 - Stateless job execution suitable for horizontal scaling
 - Persistent job storage in database for reliability
+
+## Recent Changes
+
+### July 2025 - Advanced Download Features Migration
+- **Architectural Change**: Moved advanced download features from site-level to job-level configuration
+- **Database Changes**: Added 4 new columns to jobs table, removed from sites table
+- **Enhanced Flexibility**: Different jobs using same site can now have different download strategies
+- **Migration Support**: Updated deploy.sh to handle smooth migration from old to new structure
+- **Job-Level Features**: Recursive download, duplicate renaming, date-based folders now per-job
