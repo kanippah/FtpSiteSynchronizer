@@ -217,6 +217,22 @@ for util in mount.nfs mount.nfs4 showmount; do
     fi
 done
 
+# Test NFS sudo permissions with the actual user
+print_status "Testing NFS operations with application user..."
+sudo -u $APP_USER sudo -n showmount --help >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_status "  ✓ showmount sudo access working"
+else
+    print_warning "  ✗ showmount sudo access failed"
+fi
+
+sudo -u $APP_USER sudo -n mount.nfs --help >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_status "  ✓ mount.nfs sudo access working"
+else
+    print_warning "  ✗ mount.nfs sudo access failed"
+fi
+
 # Step 4: Setup application directory and clone repository
 print_status "Setting up application directory..."
 sudo -u $APP_USER mkdir -p $APP_DIR
@@ -565,6 +581,25 @@ else
     print_status "Checking application logs..."
     tail -10 $APP_DIR/logs/gunicorn.log || echo "No logs available yet"
 fi
+
+# Final NFS verification
+print_status "Performing final NFS verification..."
+sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
+import sys
+sys.path.append('.')
+from nfs_client import NFSClient
+
+# Test NFS client initialization
+try:
+    client = NFSClient('127.0.0.1', '/test', '4', '', 'sys')
+    status = client._check_nfs_support()
+    if status:
+        print('✓ NFS support verification successful')
+    else:
+        print('⚠ NFS support verification failed - check logs for details')
+except Exception as e:
+    print(f'⚠ NFS client test failed: {e}')
+\"" 2>/dev/null || print_warning "NFS verification script failed"
 
 # Create management scripts with proper escaping
 print_status "Creating management scripts..."
