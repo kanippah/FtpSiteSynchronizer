@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# FTP/SFTP Manager - Ubuntu 24.04 Deployment Script
+# FTP/SFTP/NFS Manager - Ubuntu 24.04 Deployment Script
 # This script deploys the application on a fresh Ubuntu 24.04 server
 
 set -e  # Exit on any error
@@ -58,7 +58,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-print_status "Starting FTP/SFTP Manager deployment on Ubuntu 24.04"
+print_status "Starting FTP/SFTP/NFS Manager deployment on Ubuntu 24.04"
 
 # Get GitHub repository URL
 if [ -z "$GITHUB_REPO" ]; then
@@ -112,9 +112,25 @@ apt install -y \
     postgresql-contrib \
     postgresql-server-dev-all \
     libpq-dev \
-    cron
+    cron \
+    nfs-common \
+    nfs-kernel-server \
+    rpcbind \
+    sudo
 
 print_success "System dependencies installed"
+
+# Configure NFS services
+print_status "Configuring NFS services..."
+systemctl enable rpcbind
+systemctl enable nfs-kernel-server
+systemctl start rpcbind
+systemctl start nfs-kernel-server
+
+# Add application user to sudo group for NFS mount operations
+usermod -aG sudo $APP_USER || true  # Don't fail if user doesn't exist yet
+
+print_success "NFS services configured"
 
 # Step 2: PostgreSQL setup
 print_status "Configuring PostgreSQL..."
@@ -149,10 +165,30 @@ print_status "Creating application user..."
 if ! id "$APP_USER" &>/dev/null; then
     useradd -m -s /bin/bash $APP_USER
     usermod -aG www-data $APP_USER
+    usermod -aG sudo $APP_USER
     print_success "User $APP_USER created"
 else
     print_warning "User $APP_USER already exists"
+    usermod -aG www-data $APP_USER
+    usermod -aG sudo $APP_USER
 fi
+
+# Configure sudo permissions for NFS operations
+print_status "Configuring sudo permissions for NFS operations..."
+cat > /etc/sudoers.d/ftpmanager-nfs << EOF
+# Allow ftpmanager user to mount/unmount NFS shares without password
+$APP_USER ALL=(ALL) NOPASSWD: /bin/mount
+$APP_USER ALL=(ALL) NOPASSWD: /bin/umount
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/umount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/umount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /tmp/nfs_*
+$APP_USER ALL=(ALL) NOPASSWD: /bin/rmdir /tmp/nfs_*
+EOF
+
+chmod 440 /etc/sudoers.d/ftpmanager-nfs
+print_success "Sudo permissions configured for NFS operations"
 
 # Step 4: Setup application directory and clone repository
 print_status "Setting up application directory..."
@@ -483,11 +519,15 @@ sleep 5
 SUPERVISOR_STATUS=$(supervisorctl status ftpmanager)
 APACHE_STATUS=$(systemctl is-active apache2)
 POSTGRES_STATUS=$(systemctl is-active postgresql)
+NFS_STATUS=$(systemctl is-active nfs-kernel-server)
+RPCBIND_STATUS=$(systemctl is-active rpcbind)
 
 print_status "Service Status Check:"
 echo "  - Supervisor (ftpmanager): $SUPERVISOR_STATUS"
 echo "  - Apache: $APACHE_STATUS"
 echo "  - PostgreSQL: $POSTGRES_STATUS"
+echo "  - NFS Server: $NFS_STATUS"
+echo "  - RPC Bind: $RPCBIND_STATUS"
 
 # Test HTTP response
 HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost 2>/dev/null || echo "000")
@@ -503,10 +543,12 @@ fi
 print_status "Creating management scripts..."
 cat > /usr/local/bin/ftpmanager-status << 'EOFSTATUS'
 #!/bin/bash
-echo "=== FTP Manager Status ==="
+echo "=== FTP/SFTP/NFS Manager Status ==="
 echo "Application: $(supervisorctl status ftpmanager 2>/dev/null || echo 'Not running')"
 echo "Apache: $(systemctl is-active apache2 2>/dev/null || echo 'inactive')"
 echo "PostgreSQL: $(systemctl is-active postgresql 2>/dev/null || echo 'inactive')"
+echo "NFS Server: $(systemctl is-active nfs-kernel-server 2>/dev/null || echo 'inactive')"
+echo "RPC Bind: $(systemctl is-active rpcbind 2>/dev/null || echo 'inactive')"
 echo "Disk Usage: $(df -h /home/ftpmanager/ftpmanager 2>/dev/null | tail -1 || echo 'N/A')"
 echo "Last Backup: $(ls -la /home/ftpmanager/backups/ 2>/dev/null | tail -1 || echo 'No backups found')"
 echo "Recent Logs:"
@@ -518,7 +560,7 @@ chmod +x /usr/local/bin/ftpmanager-status
 
 cat > /usr/local/bin/ftpmanager-restart << 'EOFRESTART'
 #!/bin/bash
-echo "Restarting FTP Manager..."
+echo "Restarting FTP/SFTP/NFS Manager..."
 supervisorctl restart ftpmanager
 sleep 3
 supervisorctl status ftpmanager
@@ -548,6 +590,17 @@ echo "  - Restart App: ftpmanager-restart (or supervisorctl restart ftpmanager)"
 echo "  - View Logs: tail -f $APP_DIR/logs/gunicorn.log"
 echo "  - Manual Backup: /home/$APP_USER/backup.sh"
 echo ""
+echo "Protocol Support:"
+echo "  - FTP: Standard File Transfer Protocol"
+echo "  - SFTP: SSH File Transfer Protocol"
+echo "  - NFS: Network File System (v3, v4, v4.1, v4.2)"
+echo ""
+echo "NFS Configuration:"
+echo "  - NFS Services: Enabled and running"
+echo "  - Sudo Permissions: Configured for mount/umount operations"
+echo "  - Temporary Mounts: /tmp/nfs_* (auto-cleanup enabled)"
+echo "  - Supported Auth: AUTH_SYS, Kerberos v5 (krb5, krb5i, krb5p)"
+echo ""
 echo "Database Credentials:"
 echo "  - Database: $DB_NAME"
 echo "  - Username: $DB_USER"
@@ -555,6 +608,7 @@ echo "  - Password: $DB_PASSWORD"
 echo ""
 print_warning "IMPORTANT: Save the database password above!"
 print_warning "Browser will show SSL warning due to self-signed certificate"
+print_warning "For NFS operations, ensure target servers have proper export configurations"
 echo ""
-print_success "Access your application at: https://$DOMAIN"
+print_success "Access your FTP/SFTP/NFS Manager at: https://$DOMAIN"
 echo ""
