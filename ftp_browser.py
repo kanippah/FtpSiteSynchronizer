@@ -146,10 +146,21 @@ class FTPBrowser(FTPClient):
             
             self.disconnect()
             
+            # Calculate parent path properly
+            parent_path = None
+            if current_path and current_path != '/' and current_path != '.':
+                parent_dir = os.path.dirname(current_path)
+                if parent_dir == '':
+                    parent_path = '.'
+                elif parent_dir == '/':
+                    parent_path = ''  # Root directory
+                else:
+                    parent_path = parent_dir
+            
             return {
                 'success': True,
                 'current_path': current_path,
-                'parent_path': os.path.dirname(current_path) if current_path != '/' else None,
+                'parent_path': parent_path,
                 'items': items
             }
             

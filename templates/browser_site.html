@@ -50,7 +50,7 @@
                         <!-- Navigation -->
                         {% if parent_path is not none %}
                             <div class="mb-3 nav-buttons d-flex">
-                                <a href="{{ url_for('browse_site', site_id=site.id, remote_path=parent_path) }}" 
+                                <a href="{{ url_for('browse_site', site_id=site.id, remote_path=parent_path if parent_path != '' else '.') }}" 
                                    class="btn btn-outline-secondary btn-sm">
                                     <i data-feather="arrow-up"></i> Up to Parent Directory
                                 </a>
@@ -214,6 +214,17 @@
 <script>
     // Initialize Feather icons
     feather.replace();
+    
+    // Re-initialize feather icons when page content changes
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initial icon replacement
+        feather.replace();
+        
+        // Replace icons after any AJAX or dynamic content updates
+        setTimeout(function() {
+            feather.replace();
+        }, 100);
+    });
 
     // File preview functionality
     document.addEventListener('DOMContentLoaded', function() {
