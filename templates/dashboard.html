@@ -145,7 +145,7 @@
                                     </td>
                                     <td>
                                         {% if job.last_run %}
-                                            <small class="text-muted">{{ job.last_run.strftime('%Y-%m-%d %H:%M') }}</small>
+                                            <small class="text-muted" data-utc-datetime="{{ job.last_run.isoformat() }}">{{ job.last_run.strftime('%Y-%m-%d %H:%M') }}</small>
                                         {% else %}
                                             <small class="text-muted">Never</small>
                                         {% endif %}

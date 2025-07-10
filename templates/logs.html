@@ -115,8 +115,8 @@
                                         {% if log.__tablename__ == 'job_logs' %}
                                         <tr>
                                             <td>
-                                                <div>{{ log.start_time.strftime('%Y-%m-%d') }}</div>
-                                                <small class="text-muted">{{ log.start_time.strftime('%H:%M:%S') }}</small>
+                                                <div data-utc-date="{{ log.start_time.isoformat() }}">{{ log.start_time.strftime('%Y-%m-%d') }}</div>
+                                                <small class="text-muted" data-utc-time="{{ log.start_time.isoformat() }}">{{ log.start_time.strftime('%H:%M:%S') }}</small>
                                             </td>
                                             <td>
                                                 <span class="badge bg-primary">Job</span>
@@ -177,8 +177,8 @@
                                         {% if log.__tablename__ == 'system_logs' %}
                                         <tr>
                                             <td>
-                                                <div>{{ log.created_at.strftime('%Y-%m-%d') }}</div>
-                                                <small class="text-muted">{{ log.created_at.strftime('%H:%M:%S') }}</small>
+                                                <div data-utc-date="{{ log.created_at.isoformat() }}">{{ log.created_at.strftime('%Y-%m-%d') }}</div>
+                                                <small class="text-muted" data-utc-time="{{ log.created_at.isoformat() }}">{{ log.created_at.strftime('%H:%M:%S') }}</small>
                                             </td>
                                             <td>
                                                 <span class="badge bg-secondary">System</span>

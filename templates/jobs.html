@@ -64,7 +64,7 @@
                                     <td>
                                         <div>{{ job.schedule_type|title }}</div>
                                         {% if job.schedule_type == 'one_time' %}
-                                            <small class="text-muted">{{ job.schedule_datetime.strftime('%Y-%m-%d %H:%M') if job.schedule_datetime else 'Not set' }}</small>
+                                            <small class="text-muted" data-utc-datetime="{{ job.schedule_datetime.isoformat() if job.schedule_datetime else '' }}">{{ job.schedule_datetime.strftime('%Y-%m-%d %H:%M') if job.schedule_datetime else 'Not set' }}</small>
                                         {% elif job.schedule_type == 'recurring' %}
                                             <small class="text-muted">{{ job.cron_expression or 'Not set' }}</small>
                                         {% endif %}
@@ -79,16 +79,16 @@
                                     </td>
                                     <td>
                                         {% if job.last_run %}
-                                            <div>{{ job.last_run.strftime('%Y-%m-%d') }}</div>
-                                            <small class="text-muted">{{ job.last_run.strftime('%H:%M:%S') }}</small>
+                                            <div data-utc-date="{{ job.last_run.isoformat() }}">{{ job.last_run.strftime('%Y-%m-%d') }}</div>
+                                            <small class="text-muted" data-utc-time="{{ job.last_run.isoformat() }}">{{ job.last_run.strftime('%H:%M:%S') }}</small>
                                         {% else %}
                                             <span class="text-muted">Never</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if job.next_run %}
-                                            <div>{{ job.next_run.strftime('%Y-%m-%d') }}</div>
-                                            <small class="text-muted">{{ job.next_run.strftime('%H:%M:%S') }}</small>
+                                            <div data-utc-date="{{ job.next_run.isoformat() }}">{{ job.next_run.strftime('%Y-%m-%d') }}</div>
+                                            <small class="text-muted" data-utc-time="{{ job.next_run.isoformat() }}">{{ job.next_run.strftime('%H:%M:%S') }}</small>
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
