@@ -22,11 +22,7 @@ class Site(db.Model):
     nfs_mount_options = db.Column(db.String(200), nullable=True)  # Custom mount options
     nfs_auth_method = db.Column(db.String(20), nullable=True, default='sys')  # sys, krb5, krb5i, krb5p
     
-    # Advanced download options
-    enable_recursive_download = db.Column(db.Boolean, default=False)  # Traverse all subfolders and download files only
-    enable_duplicate_renaming = db.Column(db.Boolean, default=False)  # Auto-rename duplicate files with _1, _2, etc.
-    use_date_folders = db.Column(db.Boolean, default=False)  # Create date-based folders for downloads
-    date_folder_format = db.Column(db.String(20), default='YYYY-MM-DD')  # Date format for folder creation
+
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -56,6 +52,12 @@ class Job(db.Model):
     filename_date_pattern = db.Column(db.String(50), nullable=True)  # Date pattern in filename (e.g., YYYYMMDD)
     local_path = db.Column(db.String(500), nullable=True)
     target_site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)  # For upload jobs
+    
+    # Advanced download options (moved from sites to jobs for better granularity)
+    enable_recursive_download = db.Column(db.Boolean, default=False)  # Traverse all subfolders and download files only
+    enable_duplicate_renaming = db.Column(db.Boolean, default=False)  # Auto-rename duplicate files with _1, _2, etc.
+    use_date_folders = db.Column(db.Boolean, default=False)  # Create date-based folders for downloads
+    date_folder_format = db.Column(db.String(20), default='YYYY-MM-DD')  # Date format for folder creation
     status = db.Column(db.String(20), default='pending')  # 'pending', 'running', 'completed', 'failed'
     last_run = db.Column(db.DateTime, nullable=True)
     next_run = db.Column(db.DateTime, nullable=True)

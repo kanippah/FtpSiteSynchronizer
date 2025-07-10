@@ -92,11 +92,7 @@ def new_site():
             nfs_mount_options = request.form.get('nfs_mount_options', '') if protocol == 'nfs' else None
             nfs_auth_method = request.form.get('nfs_auth_method', 'sys') if protocol == 'nfs' else None
             
-            # Advanced download options
-            enable_recursive_download = bool(request.form.get('enable_recursive_download'))
-            enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
-            use_date_folders = bool(request.form.get('use_date_folders'))
-            date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
+
             
             # Encrypt password (not needed for NFS but keep for consistency)
             encrypted_password = encrypt_password(password) if password else encrypt_password('')
@@ -114,11 +110,7 @@ def new_site():
                 nfs_export_path=nfs_export_path,
                 nfs_version=nfs_version,
                 nfs_mount_options=nfs_mount_options,
-                nfs_auth_method=nfs_auth_method,
-                enable_recursive_download=enable_recursive_download,
-                enable_duplicate_renaming=enable_duplicate_renaming,
-                use_date_folders=use_date_folders,
-                date_folder_format=date_folder_format
+                nfs_auth_method=nfs_auth_method
             )
             
             db.session.add(site)
@@ -157,11 +149,7 @@ def edit_site(site_id):
                 site.nfs_mount_options = request.form.get('nfs_mount_options', '')
                 site.nfs_auth_method = request.form.get('nfs_auth_method', 'sys')
             
-            # Advanced download options
-            site.enable_recursive_download = bool(request.form.get('enable_recursive_download'))
-            site.enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
-            site.use_date_folders = bool(request.form.get('use_date_folders'))
-            site.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
+
             
             # Update password if provided
             if request.form['password']:
@@ -308,6 +296,12 @@ def new_job():
             
             job.local_path = request.form.get('local_path', './downloads')
             
+            # Handle advanced download options (moved from site-level to job-level)
+            job.enable_recursive_download = bool(request.form.get('enable_recursive_download'))
+            job.enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
+            job.use_date_folders = bool(request.form.get('use_date_folders'))
+            job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
+            
             # For upload jobs
             if job_type == 'upload' and request.form.get('target_site_id'):
                 job.target_site_id = int(request.form['target_site_id'])
@@ -430,6 +424,12 @@ def edit_job(job_id):
             
             job.download_all = bool(request.form.get('download_all'))
             job.local_path = request.form.get('local_path', './downloads')
+            
+            # Handle advanced download options (moved from site-level to job-level)
+            job.enable_recursive_download = bool(request.form.get('enable_recursive_download'))
+            job.enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
+            job.use_date_folders = bool(request.form.get('use_date_folders'))
+            job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
             
             # Handle filename date filter
             job.use_filename_date_filter = bool(request.form.get('use_filename_date_filter'))

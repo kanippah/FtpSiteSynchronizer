@@ -354,14 +354,14 @@ class FTPClient:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    def download_files_enhanced(self, remote_path, local_path, site=None):
-        """Enhanced download with advanced options from site configuration"""
+    def download_files_enhanced(self, remote_path, local_path, job=None):
+        """Enhanced download with advanced options from job configuration"""
         try:
-            # Use enhanced options if site is provided
-            enable_recursive = site.enable_recursive_download if site else False
-            enable_duplicate_renaming = site.enable_duplicate_renaming if site else False
-            use_date_folders = site.use_date_folders if site else False
-            date_folder_format = site.date_folder_format if site else 'YYYY-MM-DD'
+            # Use enhanced options if job is provided (moved from site-level to job-level)
+            enable_recursive = job.enable_recursive_download if job else False
+            enable_duplicate_renaming = job.enable_duplicate_renaming if job else False
+            use_date_folders = job.use_date_folders if job else False
+            date_folder_format = job.date_folder_format if job else 'YYYY-MM-DD'
             
             files_processed = 0
             bytes_transferred = 0

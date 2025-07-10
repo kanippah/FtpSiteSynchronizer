@@ -212,14 +212,14 @@ def execute_download_job(job, job_log):
                         else:
                             log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
             else:
-                # Check if any advanced download features are enabled
-                has_advanced_features = (site.enable_recursive_download or 
-                                       site.enable_duplicate_renaming or 
-                                       site.use_date_folders)
+                # Check if any advanced download features are enabled at job level
+                has_advanced_features = (job.enable_recursive_download or 
+                                       job.enable_duplicate_renaming or 
+                                       job.use_date_folders)
                 
                 if has_advanced_features:
-                    # Use enhanced download method
-                    result = client.download_files_enhanced(site.remote_path, local_path, site)
+                    # Use enhanced download method with job-level configuration
+                    result = client.download_files_enhanced(site.remote_path, local_path, job)
                 else:
                     # Regular download without advanced features
                     if site.transfer_type == 'files':
@@ -298,14 +298,14 @@ def execute_download_job(job, job_log):
         
         else:
             # Download specific files/folders
-            # Check if any advanced download features are enabled
-            has_advanced_features = (site.enable_recursive_download or 
-                                   site.enable_duplicate_renaming or 
-                                   site.use_date_folders)
+            # Check if any advanced download features are enabled at job level
+            has_advanced_features = (job.enable_recursive_download or 
+                                   job.enable_duplicate_renaming or 
+                                   job.use_date_folders)
             
             if has_advanced_features:
-                # Use enhanced download method
-                result = client.download_files_enhanced(site.remote_path, local_path, site)
+                # Use enhanced download method with job-level configuration
+                result = client.download_files_enhanced(site.remote_path, local_path, job)
             else:
                 # Regular download without advanced features
                 if site.transfer_type == 'files':
