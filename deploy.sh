@@ -1,28 +1,30 @@
 #!/bin/bash
 
-# FTP/SFTP/NFS Manager Deployment Script for Ubuntu 24.04
-# This script installs and configures the complete application with Apache, PostgreSQL, and NFS support
+# FTP/SFTP/NFS Manager - Ubuntu 24.04 Deployment Script
+# This script deploys the application on a fresh Ubuntu 24.04 server
 
-set -e  # Exit on any error
-exec > >(tee -a deployment.log) 2>&1  # Log all output
+set +e  # Continue on errors
 
-# Configuration
-APP_NAME="ftpmanager"
-APP_USER="ftpmanager"
-APP_DIR="/home/$APP_USER/$APP_NAME"
-DOMAIN="${DOMAIN:-$(hostname -f)}"
-SSL_DIR="/etc/ssl/private"
-DB_NAME="ftpmanager"
-DB_USER="ftpmanager"
-DB_PASSWORD=$(openssl rand -base64 32 | tr -d '/')
-
-# Colors for output
+# Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Make script more robust - continue on most errors
+set +e
+
+# Configuration variables
+APP_NAME="ftpmanager"
+APP_USER="ftpmanager"
+APP_DIR="/home/$APP_USER/$APP_NAME"
+DB_NAME="ftpmanager_db"
+DB_USER="ftpmanager_user"
+DOMAIN="localhost"  # Change this to your domain
+GITHUB_REPO=""  # Will be prompted
+
+# Function to print colored output
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -39,144 +41,349 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Use set +e to continue on errors instead of exiting
-set +e
+# Function to generate random password
+generate_password() {
+    openssl rand -base64 32 | tr -d "=+/" | cut -c1-25
+}
 
-print_status "Starting FTP/SFTP/NFS Manager deployment..."
-print_status "Domain: $DOMAIN"
-print_status "Application Directory: $APP_DIR"
+# Function to generate Fernet encryption key (will install cryptography if needed)
+generate_fernet_key() {
+    # Install cryptography if not available
+    if ! python3 -c "import cryptography" 2>/dev/null; then
+        pip3 install --break-system-packages cryptography
+    fi
+    python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+}
 
-# Step 1: System updates
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    print_error "Please run this script as root (use sudo)"
+    exit 1
+fi
+
+print_status "Starting FTP/SFTP/NFS Manager deployment on Ubuntu 24.04"
+
+# Get GitHub repository URL
+if [ -z "$GITHUB_REPO" ]; then
+    echo -n "Enter GitHub repository URL: "
+    read GITHUB_REPO
+    if [ -z "$GITHUB_REPO" ]; then
+        print_error "GitHub repository URL is required"
+        exit 1
+    fi
+fi
+
+# Generate secure passwords and keys
+print_status "Generating secure credentials..."
+DB_PASSWORD=$(generate_password)
+SESSION_SECRET=$(openssl rand -base64 64 | tr -d "=+/\n" | cut -c1-50)
+ENCRYPTION_KEY=$(generate_fernet_key)
+ENCRYPTION_PASSWORD=$(generate_password)
+
+# Validate Fernet key format
+if [ ${#ENCRYPTION_KEY} -ne 44 ]; then
+    print_error "Invalid Fernet key generated. Expected 44 characters, got ${#ENCRYPTION_KEY}"
+    exit 1
+fi
+
+print_success "Generated secure passwords for database and application"
+print_status "Encryption key length: ${#ENCRYPTION_KEY} characters"
+
+# Step 1: System updates and basic packages
 print_status "Updating system packages..."
 apt update && apt upgrade -y
 
-# Step 2: Install required packages
-print_status "Installing required packages..."
-apt install -y python3 python3-pip python3-venv python3-dev \
-    postgresql postgresql-contrib postgresql-client \
-    apache2 apache2-dev \
+print_status "Installing system dependencies..."
+apt install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    git \
+    apache2 \
     supervisor \
-    git curl wget unzip \
-    build-essential \
-    openssl \
+    curl \
+    wget \
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
     ufw \
-    logrotate \
-    nfs-kernel-server \
+    openssl \
+    postgresql \
+    postgresql-contrib \
+    postgresql-server-dev-all \
+    libpq-dev \
+    cron \
     nfs-common \
-    rpcbind
+    nfs-kernel-server \
+    rpcbind \
+    sudo
 
-print_success "Required packages installed"
+print_success "System dependencies installed"
 
-# Step 3: NFS Configuration
+# Configure NFS services
 print_status "Configuring NFS services..."
-
-# Enable and start NFS services
-systemctl enable nfs-kernel-server
 systemctl enable rpcbind
+systemctl enable nfs-kernel-server
 systemctl start rpcbind
 systemctl start nfs-kernel-server
 
-# Configure NFS exports (empty for client-only setup)
-touch /etc/exports
-exportfs -a
+# Add application user to sudo group for NFS mount operations
+usermod -aG sudo $APP_USER || true  # Don't fail if user doesn't exist yet
 
-print_success "NFS services configured and started"
+print_success "NFS services configured"
 
-# Step 4: Create application user
+# Step 2: PostgreSQL setup
+print_status "Configuring PostgreSQL..."
+systemctl start postgresql
+systemctl enable postgresql
+
+# Create database and user
+sudo -u postgres psql <<EOF
+CREATE DATABASE $DB_NAME;
+CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
+ALTER USER $DB_USER CREATEDB;
+\q
+EOF
+
+# Connect to the specific database and grant comprehensive schema permissions
+sudo -u postgres psql -d $DB_NAME <<EOF
+GRANT ALL ON SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $DB_USER;
+\q
+EOF
+
+print_success "PostgreSQL configured with database: $DB_NAME"
+
+# Step 3: Create application user
 print_status "Creating application user..."
 if ! id "$APP_USER" &>/dev/null; then
     useradd -m -s /bin/bash $APP_USER
+    usermod -aG www-data $APP_USER
+    usermod -aG sudo $APP_USER
     print_success "User $APP_USER created"
 else
-    print_status "User $APP_USER already exists"
+    print_warning "User $APP_USER already exists"
+    usermod -aG www-data $APP_USER
+    usermod -aG sudo $APP_USER
 fi
 
-# Step 5: Configure sudo permissions for NFS operations
+# Configure sudo permissions for NFS operations
 print_status "Configuring sudo permissions for NFS operations..."
-echo "$APP_USER ALL=(ALL) NOPASSWD: /bin/mount, /bin/umount, /usr/bin/showmount" > /etc/sudoers.d/$APP_USER
-chmod 440 /etc/sudoers.d/$APP_USER
+cat > /etc/sudoers.d/ftpmanager-nfs << EOF
+# Allow ftpmanager user to mount/unmount NFS shares without password
+$APP_USER ALL=(ALL) NOPASSWD: /bin/mount
+$APP_USER ALL=(ALL) NOPASSWD: /bin/umount
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/mount
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/umount
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/umount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/umount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/mount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/mount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/umount.nfs
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/umount.nfs4
+$APP_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /tmp/nfs_*
+$APP_USER ALL=(ALL) NOPASSWD: /bin/rmdir /tmp/nfs_*
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/showmount
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/showmount
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/showmount
+EOF
 
-print_success "Sudo permissions configured for NFS operations"
+chmod 440 /etc/sudoers.d/ftpmanager-nfs
 
-# Step 6: PostgreSQL setup
-print_status "Configuring PostgreSQL..."
-sudo -u postgres createuser --no-createdb --no-createrole --no-superuser $DB_USER 2>/dev/null || print_warning "User may already exist"
-sudo -u postgres createdb --owner=$DB_USER $DB_NAME 2>/dev/null || print_warning "Database may already exist"
-sudo -u postgres psql -c "ALTER USER $DB_USER PASSWORD '$DB_PASSWORD';" || print_warning "Password update failed"
+# Test sudo configuration
+print_status "Testing NFS sudo configuration..."
+sudo -u $APP_USER sudo -n mount --help >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_success "Sudo permissions configured for NFS operations"
+else
+    print_warning "Sudo permissions may not be working correctly"
+fi
 
-print_success "PostgreSQL configured"
+# Test NFS utilities availability
+print_status "Checking NFS client utilities..."
+for util in mount.nfs mount.nfs4 showmount; do
+    if which $util >/dev/null 2>&1; then
+        print_status "  ✓ $util found at $(which $util)"
+    else
+        print_warning "  ✗ $util not found"
+    fi
+done
 
-# Step 7: Application setup
-print_status "Setting up application..."
-mkdir -p $APP_DIR
+# Test NFS sudo permissions with the actual user
+print_status "Testing NFS operations with application user..."
+sudo -u $APP_USER sudo -n showmount --help >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_status "  ✓ showmount sudo access working"
+else
+    print_warning "  ✗ showmount sudo access failed"
+fi
+
+sudo -u $APP_USER sudo -n mount.nfs --help >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_status "  ✓ mount.nfs sudo access working"
+else
+    print_warning "  ✗ mount.nfs sudo access failed"
+fi
+
+print_success "NFS configuration completed"
+
+# Step 4: Setup application directory and clone repository
+print_status "Setting up application directory..."
+sudo -u $APP_USER mkdir -p $APP_DIR
 cd $APP_DIR
 
-# Copy application files (assuming they're in current directory)
-if [ -f "../app.py" ]; then
-    cp ../*.py ./ 2>/dev/null || true
-    cp -r ../templates ./ 2>/dev/null || true
-    cp -r ../static ./ 2>/dev/null || true
-    cp ../pyproject.toml ./ 2>/dev/null || true
-    cp ../uv.lock ./ 2>/dev/null || true
+print_status "Setting up repository..."
+if [ -d ".git" ]; then
+    print_warning "Repository already exists, pulling latest changes..."
+    sudo -u $APP_USER git pull origin main 2>/dev/null || sudo -u $APP_USER git pull origin master 2>/dev/null || print_warning "Could not pull latest changes"
+elif [ -n "$GITHUB_REPO" ] && [ "$GITHUB_REPO" != "" ]; then
+    print_status "Cloning repository from GitHub..."
+    sudo -u $APP_USER git clone $GITHUB_REPO . || print_warning "Git clone failed, continuing with existing files..."
+else
+    print_warning "No GitHub repository specified, assuming files are already present"
 fi
 
-# Create directories
-mkdir -p logs downloads uploads backups
+# Create required directories
+sudo -u $APP_USER mkdir -p logs downloads static/uploads
+sudo -u $APP_USER chmod 755 logs downloads static/uploads
 
-# Create Python virtual environment
+print_success "Repository cloned and directories created"
+
+# Step 5: Python virtual environment and dependencies
+print_status "Setting up Python virtual environment..."
 sudo -u $APP_USER python3 -m venv venv
 sudo -u $APP_USER bash -c "source venv/bin/activate && pip install --upgrade pip"
 
-# Install dependencies
-if [ -f "pyproject.toml" ]; then
-    sudo -u $APP_USER bash -c "source venv/bin/activate && pip install -e ."
-else
-    sudo -u $APP_USER bash -c "source venv/bin/activate && pip install flask flask-sqlalchemy apscheduler cryptography paramiko psycopg2-binary gunicorn"
-fi
+print_status "Installing Python dependencies..."
+sudo -u $APP_USER bash -c "source venv/bin/activate && pip install \
+    flask \
+    flask-sqlalchemy \
+    gunicorn \
+    psycopg2-binary \
+    apscheduler \
+    cryptography \
+    paramiko \
+    pytz \
+    werkzeug \
+    email-validator"
 
-print_success "Application setup completed"
+print_success "Python environment configured"
 
-# Step 8: Environment configuration
+# Step 6: Environment configuration
 print_status "Creating environment configuration..."
-sudo -u $APP_USER tee $APP_DIR/.env > /dev/null <<EOF
+# Create .env file using printf to properly handle special characters
+sudo -u $APP_USER bash -c "
+cat > $APP_DIR/.env << 'ENVEOF'
 DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME
-SESSION_SECRET=$(openssl rand -base64 32)
-ENCRYPTION_KEY=$(openssl rand -base64 32)
-ENCRYPTION_PASSWORD=$(openssl rand -base64 16)
+SESSION_SECRET=$SESSION_SECRET
+ENCRYPTION_KEY=$ENCRYPTION_KEY
+ENCRYPTION_PASSWORD=$ENCRYPTION_PASSWORD
 FLASK_ENV=production
-FLASK_APP=main.py
-EOF
+ENVEOF
+"
 
+sudo -u $APP_USER chmod 600 $APP_DIR/.env
 print_success "Environment configuration created"
 
-# Step 9: SSL certificate generation
-print_status "Generating SSL certificate..."
+# Step 7: Initialize database
+print_status "Initializing application database..."
+# Test database connection first
+sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
+import psycopg2
+import os
+os.environ['DATABASE_URL'] = 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME'
+try:
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    conn.close()
+    print('Database connection test successful')
+except Exception as e:
+    print(f'Database connection failed: {e}')
+    print('Continuing with deployment...')
+\""
+
+# Initialize database tables if main.py exists
+if [ -f "main.py" ]; then
+    print_status "Initializing database tables..."
+    sudo -u $APP_USER bash -c "cd $APP_DIR && source venv/bin/activate && python3 -c \"
+import os
+os.environ['DATABASE_URL'] = 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME'
+os.environ['SESSION_SECRET'] = '''$SESSION_SECRET'''
+os.environ['ENCRYPTION_KEY'] = '''$ENCRYPTION_KEY'''
+os.environ['ENCRYPTION_PASSWORD'] = '''$ENCRYPTION_PASSWORD'''
+os.environ['FLASK_ENV'] = 'production'
+
+try:
+    from main import app
+    from models import db
+    with app.app_context():
+        db.create_all()
+        print('Database initialized successfully')
+except Exception as e:
+    print(f'Database initialization failed: {e}')
+    print('Continuing with deployment...')
+\""
+else
+    print_warning "main.py not found, skipping database initialization"
+fi
+
+print_success "Database initialized"
+
+# Step 8: Create self-signed SSL certificate
+print_status "Creating self-signed SSL certificate..."
+SSL_DIR="/etc/ssl/certs/ftpmanager"
 mkdir -p $SSL_DIR
+
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout $SSL_DIR/ftpmanager.key \
     -out $SSL_DIR/ftpmanager.crt \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=$DOMAIN"
+    -subj "/C=US/ST=State/L=City/O=Organization/OU=OrgUnit/CN=$DOMAIN"
 
 chmod 600 $SSL_DIR/ftpmanager.key
 chmod 644 $SSL_DIR/ftpmanager.crt
 
 print_success "Self-signed SSL certificate created"
 
-# Step 10: Supervisor configuration
+# Step 9: Supervisor configuration
 print_status "Configuring Supervisor..."
-tee /etc/supervisor/conf.d/ftpmanager.conf > /dev/null <<EOF
-[program:ftpmanager]
-command=$APP_DIR/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 3 --timeout 120 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 --access-logfile $APP_DIR/logs/gunicorn_access.log --error-logfile $APP_DIR/logs/gunicorn.log --log-level info main:app
-directory=$APP_DIR
-user=$APP_USER
-autostart=true
-autorestart=true
-redirect_stderr=true
-stdout_logfile=$APP_DIR/logs/supervisor.log
-environment=PATH="$APP_DIR/venv/bin",DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME",SESSION_SECRET="$(openssl rand -base64 32)",ENCRYPTION_KEY="$(openssl rand -base64 32)",ENCRYPTION_PASSWORD="$(openssl rand -base64 16)"
-EOF
+# Ensure supervisor directories exist
+mkdir -p /etc/supervisor/conf.d
+mkdir -p /var/log/supervisor
 
-supervisorctl reread || print_warning "Supervisor configuration failed, continuing..."
+# Start supervisor service
+systemctl start supervisor
+systemctl enable supervisor
+
+# Create supervisor configuration using printf to avoid quote issues
+printf '[program:ftpmanager]\n' > /etc/supervisor/conf.d/ftpmanager.conf
+printf 'command=%s/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 3 --timeout 300 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 main:app\n' "$APP_DIR" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'directory=%s\n' "$APP_DIR" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'user=%s\n' "$APP_USER" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'autostart=true\n' >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'autorestart=true\n' >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'redirect_stderr=true\n' >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'stdout_logfile=%s/logs/gunicorn.log\n' "$APP_DIR" >> /etc/supervisor/conf.d/ftpmanager.conf
+printf 'environment=DATABASE_URL="postgresql://%s:%s@localhost/%s",SESSION_SECRET="%s",ENCRYPTION_KEY="%s",ENCRYPTION_PASSWORD="%s",FLASK_ENV="production"\n' "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$SESSION_SECRET" "$ENCRYPTION_KEY" "$ENCRYPTION_PASSWORD" >> /etc/supervisor/conf.d/ftpmanager.conf
+
+# Update supervisor and start application
+print_status "Starting supervisor services..."
+supervisorctl reread
+if [ $? -ne 0 ]; then
+    print_error "Supervisor configuration error. Checking config file..."
+    cat /etc/supervisor/conf.d/ftpmanager.conf
+    print_warning "Supervisor configuration failed, continuing..."
+fi
+
 supervisorctl update
 sleep 2
 supervisorctl start ftpmanager || print_warning "Could not start ftpmanager service"
@@ -193,7 +400,7 @@ else
     tail -20 $APP_DIR/logs/gunicorn.log 2>/dev/null || echo "No logs available"
 fi
 
-# Step 11: Apache configuration with SSL
+# Step 10: Apache configuration with SSL
 print_status "Configuring Apache with SSL..."
 
 # Enable required Apache modules
@@ -284,7 +491,7 @@ systemctl enable apache2
 
 print_success "Apache configured with SSL"
 
-# Step 12: Firewall configuration
+# Step 11: Firewall configuration
 print_status "Configuring firewall..."
 ufw --force reset
 ufw default deny incoming
@@ -295,7 +502,7 @@ ufw --force enable
 
 print_success "Firewall configured"
 
-# Step 13: Log rotation
+# Step 12: Log rotation
 print_status "Setting up log rotation..."
 tee /etc/logrotate.d/ftpmanager > /dev/null <<EOF
 $APP_DIR/logs/*.log {
@@ -314,7 +521,7 @@ EOF
 
 print_success "Log rotation configured"
 
-# Step 14: Backup script
+# Step 13: Backup script
 print_status "Creating backup script..."
 tee /home/$APP_USER/backup.sh > /dev/null <<EOF
 #!/bin/bash
@@ -344,7 +551,7 @@ echo "0 2 * * * /home/$APP_USER/backup.sh >> /home/$APP_USER/backup.log 2>&1" | 
 
 print_success "Backup script created and scheduled"
 
-# Step 15: Set proper permissions
+# Step 14: Set proper permissions
 print_status "Setting file permissions..."
 chown -R $APP_USER:www-data $APP_DIR
 chmod -R 750 $APP_DIR
@@ -355,23 +562,26 @@ print_status "Configuring Apache static file permissions..."
 chmod 755 /home/$APP_USER
 chmod 755 $APP_DIR
 chmod 755 $APP_DIR/static
-chmod 755 $APP_DIR/static/css 2>/dev/null || true
-chmod 755 $APP_DIR/static/js 2>/dev/null || true
-chmod 644 $APP_DIR/static/css/*.css 2>/dev/null || true
-chmod 644 $APP_DIR/static/js/*.js 2>/dev/null || true
+chmod 755 $APP_DIR/static/css
+chmod 755 $APP_DIR/static/js
+chmod 644 $APP_DIR/static/css/*.css
+chmod 644 $APP_DIR/static/js/*.js
 
 print_success "File permissions set"
 
-# Step 16: Final verification
+# Step 15: Create backup script
+print_status "Setting up backup script..."
+
+# Final verification
 print_status "Performing final verification..."
 sleep 5
 
 # Check services
-SUPERVISOR_STATUS=$(supervisorctl status ftpmanager 2>/dev/null || echo "Not running")
-APACHE_STATUS=$(systemctl is-active apache2 2>/dev/null || echo "inactive")
-POSTGRES_STATUS=$(systemctl is-active postgresql 2>/dev/null || echo "inactive")
-NFS_STATUS=$(systemctl is-active nfs-kernel-server 2>/dev/null || echo "inactive")
-RPCBIND_STATUS=$(systemctl is-active rpcbind 2>/dev/null || echo "inactive")
+SUPERVISOR_STATUS=$(supervisorctl status ftpmanager)
+APACHE_STATUS=$(systemctl is-active apache2)
+POSTGRES_STATUS=$(systemctl is-active postgresql)
+NFS_STATUS=$(systemctl is-active nfs-kernel-server)
+RPCBIND_STATUS=$(systemctl is-active rpcbind)
 
 print_status "Service Status Check:"
 echo "  - Supervisor (ftpmanager): $SUPERVISOR_STATUS"
@@ -387,7 +597,7 @@ if [[ "$HTTP_CODE" =~ ^(200|302|301)$ ]]; then
 else
     print_warning "Application may not be responding correctly (HTTP $HTTP_CODE)"
     print_status "Checking application logs..."
-    tail -10 $APP_DIR/logs/gunicorn.log 2>/dev/null || echo "No logs available yet"
+    tail -10 $APP_DIR/logs/gunicorn.log || echo "No logs available yet"
 fi
 
 # Final NFS verification
@@ -409,7 +619,7 @@ except Exception as e:
     print(f'⚠ NFS client test failed: {e}')
 \"" 2>/dev/null || print_warning "NFS verification script failed"
 
-# Create management scripts
+# Create management scripts with proper escaping
 print_status "Creating management scripts..."
 cat > /usr/local/bin/ftpmanager-status << 'EOFSTATUS'
 #!/bin/bash
