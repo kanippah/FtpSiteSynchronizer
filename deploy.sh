@@ -329,6 +329,40 @@ try:
     with app.app_context():
         db.create_all()
         print('Database initialized successfully')
+        
+        # Add new columns for advanced download features if they don't exist
+        try:
+            import psycopg2
+            conn = psycopg2.connect(os.environ['DATABASE_URL'])
+            cursor = conn.cursor()
+            
+            # Check if advanced download columns exist
+            cursor.execute(\"\"\"
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'sites' AND column_name = 'enable_recursive_download'
+            \"\"\")
+            
+            if not cursor.fetchone():
+                print('Adding advanced download feature columns...')
+                
+                # Add advanced download columns
+                cursor.execute('ALTER TABLE sites ADD COLUMN enable_recursive_download BOOLEAN DEFAULT FALSE;')
+                cursor.execute('ALTER TABLE sites ADD COLUMN enable_duplicate_renaming BOOLEAN DEFAULT FALSE;')
+                cursor.execute('ALTER TABLE sites ADD COLUMN use_date_folders BOOLEAN DEFAULT FALSE;')
+                cursor.execute('ALTER TABLE sites ADD COLUMN date_folder_format VARCHAR(20) DEFAULT ''YYYY-MM-DD'';')
+                
+                conn.commit()
+                print('Advanced download feature columns added successfully')
+            else:
+                print('Advanced download feature columns already exist')
+                
+            cursor.close()
+            conn.close()
+            
+        except Exception as e:
+            print(f'Database migration warning: {e}')
+            print('Continuing with deployment...')
+            
 except Exception as e:
     print(f'Database initialization failed: {e}')
     print('Continuing with deployment...')
@@ -674,6 +708,12 @@ echo "Protocol Support:"
 echo "  - FTP: Standard File Transfer Protocol"
 echo "  - SFTP: SSH File Transfer Protocol"
 echo "  - NFS: Network File System (v3, v4, v4.1, v4.2)"
+echo ""
+echo "Advanced Download Features:"
+echo "  - Recursive Download: Traverse all subfolders and flatten file structure"
+echo "  - Duplicate File Handling: Auto-rename duplicates with _1, _2, etc."
+echo "  - Date-based Folders: Organize downloads by date (YYYY-MM-DD format)"
+echo "  - Site-level Configuration: Per-site advanced feature settings"
 echo ""
 echo "NFS Configuration:"
 echo "  - NFS Services: Enabled and running"
