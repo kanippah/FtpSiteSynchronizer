@@ -82,8 +82,8 @@
                             </td>
                             <td>
                                 <div class="small text-muted">
-                                    {{ site.created_at.strftime('%Y-%m-%d') }}<br>
-                                    {{ site.created_at.strftime('%H:%M') }}
+                                    <div data-utc-date="{{ site.created_at.isoformat() }}">{{ site.created_at.strftime('%Y-%m-%d') }}</div>
+                                    <div data-utc-time="{{ site.created_at.isoformat() }}">{{ site.created_at.strftime('%H:%M') }}</div>
                                 </div>
                             </td>
                             <td>
