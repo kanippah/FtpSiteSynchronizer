@@ -533,11 +533,144 @@ class FTPClient:
     def download_files_enhanced(self, remote_path, local_path, job=None):
         """Enhanced download with advanced options from job configuration"""
         try:
+            import ftplib
+            from datetime import datetime
+            
             # Use enhanced options if job is provided (moved from site-level to job-level)
             enable_recursive = job.enable_recursive_download if job else False
             enable_duplicate_renaming = job.enable_duplicate_renaming if job else False
             use_date_folders = job.use_date_folders if job else False
             date_folder_format = job.date_folder_format if job else 'YYYY-MM-DD'
+            
+            # Connect to FTP server
+            ftp = ftplib.FTP()
+            ftp.connect(self.host, self.port, timeout=60)
+            ftp.login(self.username, self.password)
+            ftp.set_pasv(True)
+            
+            files_processed = 0
+            bytes_transferred = 0
+            log_messages = []
+            
+            def get_unique_filename(file_path):
+                """Generate unique filename if duplicate renaming is enabled"""
+                if not enable_duplicate_renaming:
+                    return file_path
+                
+                base_path = os.path.dirname(file_path)
+                base_name = os.path.basename(file_path)
+                name, ext = os.path.splitext(base_name)
+                
+                counter = 1
+                while os.path.exists(file_path):
+                    new_name = f"{name}_{counter}{ext}"
+                    file_path = os.path.join(base_path, new_name)
+                    counter += 1
+                
+                return file_path
+            
+            def get_date_folder_path(base_path):
+                """Generate date-based folder path if enabled"""
+                if not use_date_folders:
+                    return base_path
+                
+                now = datetime.now()
+                
+                # Format date folder based on job settings
+                if date_folder_format == 'YYYY-MM-DD':
+                    date_folder = now.strftime('%Y-%m-%d')
+                elif date_folder_format == 'YYYY-MM':
+                    date_folder = now.strftime('%Y-%m')
+                elif date_folder_format == 'YYYY':
+                    date_folder = now.strftime('%Y')
+                else:
+                    date_folder = now.strftime('%Y-%m-%d')
+                
+                return os.path.join(base_path, date_folder)
+            
+            def download_recursive(remote_dir, local_dir, flatten=False):
+                """Recursively download files from directory"""
+                nonlocal files_processed, bytes_transferred
+                
+                try:
+                    ftp.cwd(remote_dir)
+                    
+                    # Get detailed listing
+                    lines = []
+                    ftp.retrlines('LIST', lines.append)
+                    
+                    for line in lines:
+                        parts = line.split()
+                        if len(parts) >= 9:
+                            permissions = parts[0]
+                            filename = ' '.join(parts[8:])
+                            
+                            if filename not in ['.', '..']:
+                                if permissions.startswith('d'):
+                                    # Directory - process recursively if enabled
+                                    if enable_recursive:
+                                        remote_subdir = f"{remote_dir}/{filename}".replace('//', '/')
+                                        log_messages.append(f"Processing subdirectory: {filename}")
+                                        download_recursive(remote_subdir, local_dir, flatten=True)
+                                        
+                                        # Go back to current directory
+                                        ftp.cwd(remote_dir)
+                                
+                                else:
+                                    # File - download it
+                                    target_local_dir = get_date_folder_path(local_dir) if not flatten else local_dir
+                                    os.makedirs(target_local_dir, exist_ok=True)
+                                    
+                                    local_file_path = os.path.join(target_local_dir, filename)
+                                    local_file_path = get_unique_filename(local_file_path)
+                                    
+                                    try:
+                                        with open(local_file_path, 'wb') as local_file:
+                                            ftp.retrbinary(f'RETR {filename}', local_file.write)
+                                        
+                                        file_size = os.path.getsize(local_file_path)
+                                        if file_size > 0:
+                                            files_processed += 1
+                                            bytes_transferred += file_size
+                                            log_messages.append(f"Downloaded: {filename} ({file_size} bytes)")
+                                        else:
+                                            log_messages.append(f"Failed: {filename} (0 bytes)")
+                                            os.remove(local_file_path)
+                                        
+                                    except Exception as e:
+                                        log_messages.append(f"Failed to download {filename}: {str(e)}")
+                                        if os.path.exists(local_file_path):
+                                            os.remove(local_file_path)
+                                        continue
+                
+                except Exception as e:
+                    log_messages.append(f"Error processing directory {remote_dir}: {str(e)}")
+            
+            # Handle job group folder organization with job folder name
+            if job and job.job_group_id:
+                try:
+                    from job_group_manager import JobGroupManager
+                    group_manager = JobGroupManager()
+                    local_path = group_manager.ensure_group_folder(
+                        job.job_group_id, 
+                        local_path, 
+                        reference_date=None, 
+                        job_folder_name=job.job_folder_name
+                    )
+                except Exception as e:
+                    log_messages.append(f"Warning: Failed to apply job group folder: {e}")
+            
+            # Start download process  
+            download_recursive(remote_path, local_path)
+            
+            ftp.quit()
+            
+            return {
+                'success': True,
+                'files_processed': files_processed,
+                'bytes_transferred': bytes_transferred,
+                'log': log_messages
+            }
             
             # Handle job group folder organization with job folder name
             if job and job.job_group_id:
