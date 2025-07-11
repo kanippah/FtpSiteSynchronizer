@@ -351,15 +351,10 @@ class FTPClient:
             return {'success': False, 'error': str(e)}
     
     def download_all_files(self, remote_path, local_path):
-        """Download all files and folders efficiently"""
+        """Download all files and folders with retry logic"""
         try:
             import ftplib
             import time
-            
-            ftp = ftplib.FTP()
-            ftp.connect(self.host, self.port, timeout=60)
-            ftp.login(self.username, self.password)
-            ftp.set_pasv(True)
             
             files_processed = 0
             bytes_transferred = 0
@@ -368,104 +363,142 @@ class FTPClient:
             # Create local directory
             os.makedirs(local_path, exist_ok=True)
             
-            # Get all files and folders to process
-            try:
-                # First, get a complete directory listing
-                ftp.cwd(remote_path)
-                lines = []
-                ftp.retrlines('LIST', lines.append)
-                
-                files_to_download = []
-                folders_to_process = []
-                
-                for line in lines:
-                    parts = line.split()
-                    if len(parts) >= 9:
-                        permissions = parts[0]
-                        filename = ' '.join(parts[8:])
-                        
-                        if filename not in ['.', '..']:
-                            if permissions.startswith('d'):
-                                folders_to_process.append(filename)
-                            else:
-                                files_to_download.append(filename)
-                
-                # Download all files in current directory
-                for filename in files_to_download:
-                    local_file_path = os.path.join(local_path, filename)
+            # Multiple attempts with fresh connections
+            for attempt in range(3):
+                try:
+                    log_messages.append(f"Connection attempt {attempt + 1}")
                     
-                    try:
-                        with open(local_file_path, 'wb') as local_file:
-                            ftp.retrbinary(f'RETR {filename}', local_file.write)
-                        
-                        file_size = os.path.getsize(local_file_path)
-                        if file_size > 0:
-                            files_processed += 1
-                            bytes_transferred += file_size
-                            log_messages.append(f"Downloaded: {filename} ({file_size} bytes)")
-                        else:
-                            log_messages.append(f"Failed: {filename} (0 bytes)")
-                            os.remove(local_file_path)
-                        
-                    except Exception as e:
-                        log_messages.append(f"Failed to download {filename}: {str(e)}")
-                        if os.path.exists(local_file_path):
-                            os.remove(local_file_path)
-                        continue
+                    ftp = ftplib.FTP()
+                    ftp.connect(self.host, self.port, timeout=60)
+                    ftp.login(self.username, self.password)
+                    ftp.set_pasv(True)
                     
-                    # Small delay between downloads
-                    time.sleep(0.1)
-                
-                # Process folders (one level deep to avoid infinite recursion)
-                for folder_name in folders_to_process[:10]:  # Limit to 10 folders for safety
-                    try:
-                        folder_remote_path = f"{remote_path}/{folder_name}".replace('//', '/')
-                        folder_local_path = os.path.join(local_path, folder_name)
+                    # Get directory listing
+                    ftp.cwd(remote_path)
+                    lines = []
+                    ftp.retrlines('LIST', lines.append)
+                    
+                    files_to_download = []
+                    folders_to_process = []
+                    
+                    for line in lines:
+                        parts = line.split()
+                        if len(parts) >= 9:
+                            permissions = parts[0]
+                            filename = ' '.join(parts[8:])
+                            
+                            if filename not in ['.', '..']:
+                                if permissions.startswith('d'):
+                                    folders_to_process.append(filename)
+                                else:
+                                    files_to_download.append(filename)
+                    
+                    log_messages.append(f"Found {len(files_to_download)} files, {len(folders_to_process)} folders")
+                    
+                    # Download files in batches of 10
+                    batch_size = 10
+                    for i in range(0, len(files_to_download), batch_size):
+                        batch = files_to_download[i:i+batch_size]
                         
-                        os.makedirs(folder_local_path, exist_ok=True)
-                        ftp.cwd(folder_remote_path)
-                        
-                        folder_lines = []
-                        ftp.retrlines('LIST', folder_lines.append)
-                        
-                        for line in folder_lines:
-                            parts = line.split()
-                            if len(parts) >= 9:
-                                permissions = parts[0]
-                                filename = ' '.join(parts[8:])
+                        for filename in batch:
+                            local_file_path = os.path.join(local_path, filename)
+                            
+                            # Skip if already downloaded
+                            if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
+                                continue
+                            
+                            try:
+                                with open(local_file_path, 'wb') as local_file:
+                                    ftp.retrbinary(f'RETR {filename}', local_file.write)
                                 
-                                if filename not in ['.', '..'] and not permissions.startswith('d'):
-                                    local_file_path = os.path.join(folder_local_path, filename)
+                                file_size = os.path.getsize(local_file_path)
+                                if file_size > 0:
+                                    files_processed += 1
+                                    bytes_transferred += file_size
+                                    log_messages.append(f"Downloaded: {filename} ({file_size} bytes)")
+                                else:
+                                    if os.path.exists(local_file_path):
+                                        os.remove(local_file_path)
+                                    log_messages.append(f"Failed: {filename} (0 bytes)")
+                                
+                            except Exception as e:
+                                log_messages.append(f"Error downloading {filename}: {str(e)}")
+                                if os.path.exists(local_file_path):
+                                    os.remove(local_file_path)
+                                continue
+                            
+                            # Small delay between files
+                            time.sleep(0.1)
+                        
+                        # Re-establish connection every batch to prevent timeouts
+                        if i + batch_size < len(files_to_download):
+                            try:
+                                ftp.quit()
+                                ftp = ftplib.FTP()
+                                ftp.connect(self.host, self.port, timeout=60)
+                                ftp.login(self.username, self.password)
+                                ftp.set_pasv(True)
+                                ftp.cwd(remote_path)
+                            except:
+                                log_messages.append(f"Connection refresh failed at batch {i//batch_size + 1}")
+                                break
+                    
+                    # Download from subdirectories
+                    for folder_name in folders_to_process:
+                        try:
+                            ftp.cwd(f"{remote_path}/{folder_name}")
+                            folder_lines = []
+                            ftp.retrlines('LIST', folder_lines.append)
+                            
+                            for line in folder_lines:
+                                parts = line.split()
+                                if len(parts) >= 9:
+                                    permissions = parts[0]
+                                    filename = ' '.join(parts[8:])
                                     
-                                    try:
-                                        with open(local_file_path, 'wb') as local_file:
-                                            ftp.retrbinary(f'RETR {filename}', local_file.write)
+                                    if filename not in ['.', '..'] and not permissions.startswith('d'):
+                                        local_file_path = os.path.join(local_path, filename)
                                         
-                                        file_size = os.path.getsize(local_file_path)
-                                        if file_size > 0:
-                                            files_processed += 1
-                                            bytes_transferred += file_size
-                                            log_messages.append(f"Downloaded: {folder_name}/{filename} ({file_size} bytes)")
-                                        else:
-                                            os.remove(local_file_path)
+                                        # Skip if already downloaded
+                                        if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
+                                            continue
                                         
-                                    except Exception as e:
-                                        log_messages.append(f"Failed to download {folder_name}/{filename}: {str(e)}")
-                                        if os.path.exists(local_file_path):
-                                            os.remove(local_file_path)
-                                        continue
-                        
-                        # Go back to main directory
-                        ftp.cwd(remote_path)
-                        
-                    except Exception as e:
-                        log_messages.append(f"Error processing folder {folder_name}: {str(e)}")
-                        continue
-                
-            except Exception as e:
-                log_messages.append(f"Error getting directory listing: {str(e)}")
-            
-            ftp.quit()
+                                        try:
+                                            with open(local_file_path, 'wb') as local_file:
+                                                ftp.retrbinary(f'RETR {filename}', local_file.write)
+                                            
+                                            file_size = os.path.getsize(local_file_path)
+                                            if file_size > 0:
+                                                files_processed += 1
+                                                bytes_transferred += file_size
+                                                log_messages.append(f"Downloaded from {folder_name}: {filename} ({file_size} bytes)")
+                                            else:
+                                                if os.path.exists(local_file_path):
+                                                    os.remove(local_file_path)
+                                        
+                                        except Exception as e:
+                                            log_messages.append(f"Error downloading {folder_name}/{filename}: {str(e)}")
+                                            if os.path.exists(local_file_path):
+                                                os.remove(local_file_path)
+                            
+                            ftp.cwd(remote_path)
+                            
+                        except Exception as e:
+                            log_messages.append(f"Error processing folder {folder_name}: {str(e)}")
+                    
+                    ftp.quit()
+                    break  # Success - exit retry loop
+                    
+                except Exception as e:
+                    log_messages.append(f"Attempt {attempt + 1} failed: {str(e)}")
+                    try:
+                        ftp.quit()
+                    except:
+                        pass
+                    
+                    if attempt < 2:
+                        time.sleep(2)  # Wait before retry
+                    continue
             
             return {
                 'success': True,
