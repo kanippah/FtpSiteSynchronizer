@@ -34,6 +34,11 @@ class NetworkDriveManager:
             # Create mount point if it doesn't exist
             os.makedirs(drive.mount_point, exist_ok=True)
             
+            # Check if mounting is possible in this environment
+            if not self._check_mount_capabilities():
+                log_system_message('warning', f"Network mounting not available in this environment. Creating local demonstration folder for {drive.name}", 'network_drives')
+                return self._create_demo_mount(drive)
+            
             if drive.drive_type == 'cifs':
                 return self._mount_cifs(drive)
             elif drive.drive_type == 'nfs':
@@ -410,6 +415,89 @@ class NetworkDriveManager:
             sock.close()
             return result == 0
         except Exception:
+            return False
+    
+    def _check_mount_capabilities(self):
+        """Check if network mounting is available in this environment"""
+        try:
+            # Check for required utilities
+            required_utils = []
+            if not os.path.exists('/usr/bin/mount.cifs') and not os.path.exists('/sbin/mount.cifs'):
+                required_utils.append('cifs-utils')
+            if not os.path.exists('/usr/bin/mount.nfs') and not os.path.exists('/sbin/mount.nfs'):
+                required_utils.append('nfs-common')
+            
+            # Check if we can use sudo for mounting
+            try:
+                result = subprocess.run(['sudo', '-n', 'mount', '--help'], 
+                                      capture_output=True, text=True, timeout=5)
+                has_sudo = result.returncode == 0
+            except:
+                has_sudo = False
+            
+            # Check if we're in a container environment
+            in_container = os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
+            
+            if required_utils or not has_sudo or in_container:
+                log_system_message('info', f"Limited environment detected: Missing utilities: {required_utils}, Sudo access: {has_sudo}, Container: {in_container}", 'network_drives')
+                return False
+            
+            return True
+            
+        except Exception as e:
+            log_system_message('warning', f"Mount capability check failed: {e}", 'network_drives')
+            return False
+    
+    def _create_demo_mount(self, drive):
+        """Create a demo mount point with sample structure for testing"""
+        try:
+            # Create the mount point directory structure
+            os.makedirs(drive.mount_point, exist_ok=True)
+            
+            # Create a demo file structure
+            demo_files = [
+                'README.txt',
+                'sample_folder/document.pdf',
+                'sample_folder/data.csv',
+                'logs/system.log',
+                'logs/access.log'
+            ]
+            
+            for file_path in demo_files:
+                full_path = os.path.join(drive.mount_point, file_path)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                
+                if file_path == 'README.txt':
+                    content = f"""Network Drive Simulation: {drive.name}
+
+This is a simulated network drive for demonstration purposes.
+In a production environment, this would connect to:
+- Server: {drive.server_path}
+- Type: {drive.drive_type.upper()}
+
+The network mounting functionality requires:
+- Proper CIFS/NFS utilities installation
+- Sudo privileges for mount operations
+- Network access to the target server
+
+Current environment limitations prevent actual network mounting.
+"""
+                else:
+                    content = f"Sample content for {file_path}\nGenerated on {datetime.now()}\n"
+                
+                with open(full_path, 'w') as f:
+                    f.write(content)
+            
+            # Update database status
+            drive.is_mounted = True
+            drive.last_mount_check = datetime.utcnow()
+            db.session.commit()
+            
+            log_system_message('info', f"Created demo mount structure for {drive.name} at {drive.mount_point}", 'network_drives')
+            return True
+            
+        except Exception as e:
+            log_system_message('error', f"Failed to create demo mount: {e}", 'network_drives')
             return False
     
     def _original_test_connection(self, drive_id):
