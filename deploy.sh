@@ -128,9 +128,29 @@ apt install -y \
     nfs-kernel-server \
     rpcbind \
     cifs-utils \
-    sudo
+    sudo \
+    iputils-ping \
+    netcat-openbsd \
+    samba-common-bin \
+    smbclient \
+    net-tools \
+    openssh-client \
+    rsync \
+    traceroute \
+    dnsutils
 
 print_success "System dependencies installed"
+
+# Additional network tools installation
+print_status "Installing additional network diagnostic tools..."
+apt install -y \
+    iproute2 \
+    fail2ban \
+    htop \
+    iotop \
+    nethogs
+
+print_success "Network diagnostic tools installed"
 
 # Configure NFS services
 print_status "Configuring NFS services..."
@@ -142,7 +162,21 @@ systemctl start nfs-kernel-server
 # Add application user to sudo group for NFS mount operations
 usermod -aG sudo $APP_USER || true  # Don't fail if user doesn't exist yet
 
-print_success "NFS services configured"
+# Create mount directories for network drives
+print_status "Creating network drive mount points..."
+mkdir -p /mnt/network_drives
+mkdir -p /mnt/cifs
+mkdir -p /mnt/nfs
+chmod 755 /mnt/network_drives /mnt/cifs /mnt/nfs
+
+# Configure sudo permissions for network mounting
+print_status "Configuring sudo permissions for network mounting..."
+cat > /etc/sudoers.d/ftpmanager-mount << EOF
+# Allow ftpmanager user to mount/unmount network drives
+$APP_USER ALL=(ALL) NOPASSWD: /bin/mount, /bin/umount, /sbin/mount.cifs, /sbin/mount.nfs, /usr/bin/showmount
+EOF
+
+print_success "NFS services and network mounting configured"
 
 # Step 2: PostgreSQL setup
 print_status "Configuring PostgreSQL..."
@@ -837,6 +871,31 @@ echo "  - Database: $DB_NAME"
 echo "  - Username: $DB_USER"
 echo "  - Password: $DB_PASSWORD"
 echo ""
+# Network tools validation
+print_status "Testing network tools installation..."
+
+echo "Testing network tools:"
+ping -c 1 8.8.8.8 > /dev/null 2>&1 && echo "  ✓ Ping: Working" || echo "  ✗ Ping: Failed"
+command -v nc > /dev/null && echo "  ✓ Netcat: Available" || echo "  ✗ Netcat: Not found"
+command -v mount.cifs > /dev/null && echo "  ✓ CIFS mount: Available" || echo "  ✗ CIFS mount: Not found"
+command -v showmount > /dev/null && echo "  ✓ NFS showmount: Available" || echo "  ✗ NFS showmount: Not found"
+command -v smbclient > /dev/null && echo "  ✓ SMB client: Available" || echo "  ✗ SMB client: Not found"
+
+echo ""
+echo "Network Drive Testing Commands:"
+echo "  # Test NFS mount"
+echo "  sudo mkdir -p /mnt/test_nfs"
+echo "  sudo mount -t nfs YOUR_NFS_SERVER:/export/path /mnt/test_nfs"
+echo "  ls -la /mnt/test_nfs"
+echo "  sudo umount /mnt/test_nfs"
+echo ""
+echo "  # Test CIFS mount"
+echo "  sudo mkdir -p /mnt/test_cifs"
+echo "  sudo mount -t cifs //YOUR_SERVER/share /mnt/test_cifs -o username=user,password=pass"
+echo "  ls -la /mnt/test_cifs"
+echo "  sudo umount /mnt/test_cifs"
+echo ""
+
 print_warning "IMPORTANT: Save the database password above!"
 print_warning "Browser will show SSL warning due to self-signed certificate"
 print_warning "For NFS operations, ensure target servers have proper export configurations"
