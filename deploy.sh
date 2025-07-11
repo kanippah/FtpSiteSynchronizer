@@ -2,6 +2,7 @@
 
 # FTP/SFTP/NFS Manager - Ubuntu 24.04 Deployment Script
 # This script deploys the application on a fresh Ubuntu 24.04 server
+# Enhanced with Job Groups and Network Drive mounting support
 
 set +e  # Continue on errors
 
@@ -119,6 +120,7 @@ apt install -y \
     nfs-common \
     nfs-kernel-server \
     rpcbind \
+    cifs-utils \
     sudo
 
 print_success "System dependencies installed"
@@ -176,10 +178,10 @@ else
     usermod -aG sudo $APP_USER
 fi
 
-# Configure sudo permissions for NFS operations
-print_status "Configuring sudo permissions for NFS operations..."
+# Configure sudo permissions for network drive operations
+print_status "Configuring sudo permissions for network drive operations..."
 cat > /etc/sudoers.d/ftpmanager-nfs << EOF
-# Allow ftpmanager user to mount/unmount NFS shares without password
+# Allow ftpmanager user to mount/unmount NFS and CIFS shares without password
 $APP_USER ALL=(ALL) NOPASSWD: /bin/mount
 $APP_USER ALL=(ALL) NOPASSWD: /bin/umount
 $APP_USER ALL=(ALL) NOPASSWD: /usr/bin/mount
@@ -197,22 +199,26 @@ $APP_USER ALL=(ALL) NOPASSWD: /bin/rmdir /tmp/nfs_*
 $APP_USER ALL=(ALL) NOPASSWD: /usr/bin/showmount
 $APP_USER ALL=(ALL) NOPASSWD: /sbin/showmount
 $APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/showmount
+$APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.cifs
+$APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/mount.cifs
+$APP_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /mnt/*
+$APP_USER ALL=(ALL) NOPASSWD: /bin/rmdir /mnt/*
 EOF
 
 chmod 440 /etc/sudoers.d/ftpmanager-nfs
 
 # Test sudo configuration
-print_status "Testing NFS sudo configuration..."
+print_status "Testing network drive sudo configuration..."
 sudo -u $APP_USER sudo -n mount --help >/dev/null 2>&1
 if [ $? -eq 0 ]; then
-    print_success "Sudo permissions configured for NFS operations"
+    print_success "Sudo permissions configured for network drive operations"
 else
     print_warning "Sudo permissions may not be working correctly"
 fi
 
-# Test NFS utilities availability
-print_status "Checking NFS client utilities..."
-for util in mount.nfs mount.nfs4 showmount; do
+# Test NFS and CIFS utilities availability
+print_status "Checking network drive utilities..."
+for util in mount.nfs mount.nfs4 showmount mount.cifs; do
     if which $util >/dev/null 2>&1; then
         print_status "  ✓ $util found at $(which $util)"
     else
@@ -220,8 +226,8 @@ for util in mount.nfs mount.nfs4 showmount; do
     fi
 done
 
-# Test NFS sudo permissions with the actual user
-print_status "Testing NFS operations with application user..."
+# Test network drive sudo permissions with the actual user
+print_status "Testing network drive operations with application user..."
 sudo -u $APP_USER sudo -n showmount --help >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     print_status "  ✓ showmount sudo access working"
@@ -236,7 +242,7 @@ else
     print_warning "  ✗ mount.nfs sudo access failed"
 fi
 
-print_success "NFS configuration completed"
+print_success "Network drive configuration completed"
 
 # Step 4: Setup application directory and clone repository
 print_status "Setting up application directory..."
@@ -367,6 +373,67 @@ try:
             else:
                 print('Job-level advanced download feature columns already exist')
                 
+            # Migration 3: Add job groups table
+            cursor.execute(\\\"SELECT table_name FROM information_schema.tables WHERE table_name = 'job_groups'\\\")
+            
+            if not cursor.fetchone():
+                print('Creating job groups table...')
+                cursor.execute(\\\"\\\"\\\"
+                CREATE TABLE job_groups (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    description TEXT,
+                    group_folder_name VARCHAR(100) NOT NULL,
+                    enable_date_organization BOOLEAN DEFAULT TRUE,
+                    date_folder_format VARCHAR(20) DEFAULT 'YYYY-MM',
+                    execution_order INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                \\\"\\\"\\\")
+                
+                print('Job groups table created successfully')
+            else:
+                print('Job groups table already exists')
+                
+            # Migration 4: Add network drives table
+            cursor.execute(\\\"SELECT table_name FROM information_schema.tables WHERE table_name = 'network_drives'\\\")
+            
+            if not cursor.fetchone():
+                print('Creating network drives table...')
+                cursor.execute(\\\"\\\"\\\"
+                CREATE TABLE network_drives (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    drive_type VARCHAR(20) NOT NULL,
+                    server_path VARCHAR(500) NOT NULL,
+                    mount_point VARCHAR(500) NOT NULL,
+                    username VARCHAR(100),
+                    password_encrypted BYTEA,
+                    mount_options VARCHAR(200),
+                    auto_mount BOOLEAN DEFAULT TRUE,
+                    is_mounted BOOLEAN DEFAULT FALSE,
+                    last_mount_check TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                \\\"\\\"\\\")
+                
+                print('Network drives table created successfully')
+            else:
+                print('Network drives table already exists')
+                
+            # Migration 5: Add job_group_id to jobs table
+            cursor.execute(\\\"SELECT column_name FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'job_group_id'\\\")
+            
+            if not cursor.fetchone():
+                print('Adding job_group_id column to jobs table...')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN job_group_id INTEGER REFERENCES job_groups(id);')
+                print('Job group reference added to jobs table')
+            else:
+                print('Job group reference already exists in jobs table')
+                
+            conn.commit()
             cursor.close()
             conn.close()
             
