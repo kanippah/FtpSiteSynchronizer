@@ -5,11 +5,14 @@
 # Enhanced with Job Groups, Network Drive mounting, and File Browser support
 #
 # Latest Features (July 2025):
+# - Nested Folder Structure: Three-level hierarchy YYYY-MM/group_folder_name/job_folder_name/
+# - Job Folder Names: Individual job organization within job groups
 # - Network Drive Browsing: Browse mounted CIFS/NFS drives through web interface
 # - Job Groups with date-based folder organization (YYYY-MM/GroupName/)
 # - Enhanced file browser supporting both remote sites and local network drives
 # - Download functionality for files from any browsable source
 # - Comprehensive security checks and path validation
+# - Advanced Download Features: Recursive downloads, duplicate renaming, date-based folders
 
 set +e  # Continue on errors
 
@@ -511,6 +514,16 @@ try:
             else:
                 print('Job group reference already exists in jobs table')
                 
+            # Migration 6: Add job_folder_name to jobs table for nested folder structure
+            cursor.execute(\\\"SELECT column_name FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'job_folder_name'\\\")
+            
+            if not cursor.fetchone():
+                print('Adding job_folder_name column to jobs table for nested folder organization...')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN job_folder_name VARCHAR(100);')
+                print('Job folder name column added to jobs table - enables YYYY-MM/group_folder_name/job_folder_name/ structure')
+            else:
+                print('Job folder name column already exists in jobs table')
+                
             conn.commit()
             cursor.close()
             conn.close()
@@ -859,6 +872,31 @@ echo "  - Check Status: ftpmanager-status"
 echo "  - Restart App: ftpmanager-restart (or supervisorctl restart ftpmanager)"
 echo "  - View Logs: tail -f $APP_DIR/logs/gunicorn.log"
 echo "  - Manual Backup: /home/$APP_USER/backup.sh"
+echo ""
+echo "New Features (July 2025):"
+echo "  📁 Nested Folder Structure:"
+echo "    • Three-level hierarchy: YYYY-MM/group_folder_name/job_folder_name/"
+echo "    • Automatic date-based organization by month"
+echo "    • Individual job folders within groups for better organization"
+echo "    • Example: downloads/2025-07/Accounting/Invoices/"
+echo ""
+echo "  🚀 Advanced Download Features (Job-Level):"
+echo "    • Recursive Downloads: Downloads complete folder hierarchies"
+echo "    • Duplicate File Renaming: Auto-renames files as file_1.txt, file_2.txt"
+echo "    • Date-Based Folders: Creates additional date subfolders within job folders"
+echo "    • Custom Date Formats: Supports YYYY-MM-DD, YYYY-MM, YYYY_MM, etc."
+echo ""
+echo "  🏢 Job Groups & Organization:"
+echo "    • Group related jobs together (e.g., Accounting, HR, Operations)"
+echo "    • Automatic folder creation following group settings"
+echo "    • Date-based organization with configurable formats"
+echo "    • Execution ordering within groups"
+echo ""
+echo "  💾 Network Drive Management:"
+echo "    • CIFS/SMB and NFS network drive mounting"
+echo "    • Automatic mounting on system startup"
+echo "    • Web-based browse and download functionality"
+echo "    • Secure credential storage with encryption"
 echo ""
 echo "Protocol Support:"
 echo "  - FTP: Standard File Transfer Protocol"
