@@ -172,13 +172,28 @@ def execute_download_job(job, job_log):
         
         client = FTPClient(site.protocol, site.host, site.port, site.username, password, **client_kwargs)
         
-        # Create local directory
-        local_path = job.local_path or './downloads'
+        # Create local directory - incorporate job group and folder structure
+        from job_group_manager import JobGroupManager
+        
+        if job.job_group_id:
+            # Use group manager to get organized folder path
+            group_manager = JobGroupManager()
+            base_path = job.local_path or './downloads'
+            local_path = group_manager.get_group_folder_path(
+                job.job_group_id, 
+                base_path, 
+                job_folder_name=job.job_folder_name
+            )
+            group_manager.ensure_group_folder(job.job_group_id, base_path, job_folder_name=job.job_folder_name)
+        else:
+            local_path = job.local_path or './downloads'
+        
         os.makedirs(local_path, exist_ok=True)
         
         files_processed = 0
         bytes_transferred = 0
         log_messages = []
+        log_messages.append(f"Target folder: {local_path}")
         
         if job.download_all:
             # Download all files/folders (with optional filename date filtering)
@@ -221,7 +236,7 @@ def execute_download_job(job, job_log):
                     # Use enhanced download method with job-level configuration
                     result = client.download_files_enhanced(site.remote_path, local_path, job)
                 else:
-                    # Regular download without advanced features
+                    # Regular download without advanced features (with timeout protection)
                     if site.transfer_type == 'files':
                         result = client.download_all_files(site.remote_path, local_path)
                     else:
