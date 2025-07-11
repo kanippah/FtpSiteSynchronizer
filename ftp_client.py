@@ -660,10 +660,114 @@ class FTPClient:
                 except Exception as e:
                     log_messages.append(f"Warning: Failed to apply job group folder: {e}")
             
-            # Start download process  
-            download_recursive(remote_path, local_path)
+            # Start download process - download ALL files with advanced features
+            log_messages.append("Starting enhanced download with all advanced features")
             
-            ftp.quit()
+            # Get date-based folder path
+            final_local_path = get_date_folder_path(local_path)
+            os.makedirs(final_local_path, exist_ok=True)
+            
+            try:
+                # Get complete directory listing
+                ftp.cwd(remote_path)
+                lines = []
+                ftp.retrlines('LIST', lines.append)
+                
+                files_found = []
+                directories_found = []
+                
+                for line in lines:
+                    parts = line.split()
+                    if len(parts) >= 9:
+                        permissions = parts[0]
+                        filename = ' '.join(parts[8:])
+                        
+                        if filename not in ['.', '..']:
+                            if permissions.startswith('d'):
+                                directories_found.append(filename)
+                            else:
+                                files_found.append(filename)
+                
+                log_messages.append(f"Found {len(files_found)} files and {len(directories_found)} directories")
+                
+                # Download all files from root directory
+                for filename in files_found:
+                    local_file_path = os.path.join(final_local_path, filename)
+                    local_file_path = get_unique_filename(local_file_path)
+                    
+                    try:
+                        with open(local_file_path, 'wb') as local_file:
+                            ftp.retrbinary(f'RETR {filename}', local_file.write)
+                        
+                        file_size = os.path.getsize(local_file_path)
+                        if file_size > 0:
+                            files_processed += 1
+                            bytes_transferred += file_size
+                            log_messages.append(f"Downloaded: {filename} ({file_size} bytes)")
+                        else:
+                            log_messages.append(f"Failed: {filename} (0 bytes)")
+                            if os.path.exists(local_file_path):
+                                os.remove(local_file_path)
+                    
+                    except Exception as e:
+                        log_messages.append(f"Error downloading {filename}: {str(e)}")
+                        if os.path.exists(local_file_path):
+                            os.remove(local_file_path)
+                
+                # Download files from subdirectories if recursive is enabled
+                if enable_recursive:
+                    for dir_name in directories_found:
+                        try:
+                            log_messages.append(f"Processing directory: {dir_name}")
+                            ftp.cwd(f"{remote_path}/{dir_name}")
+                            
+                            subdir_lines = []
+                            ftp.retrlines('LIST', subdir_lines.append)
+                            
+                            for line in subdir_lines:
+                                parts = line.split()
+                                if len(parts) >= 9:
+                                    permissions = parts[0]
+                                    filename = ' '.join(parts[8:])
+                                    
+                                    if filename not in ['.', '..'] and not permissions.startswith('d'):
+                                        # Download file to main directory (flattened structure)
+                                        local_file_path = os.path.join(final_local_path, filename)
+                                        local_file_path = get_unique_filename(local_file_path)
+                                        
+                                        try:
+                                            with open(local_file_path, 'wb') as local_file:
+                                                ftp.retrbinary(f'RETR {filename}', local_file.write)
+                                            
+                                            file_size = os.path.getsize(local_file_path)
+                                            if file_size > 0:
+                                                files_processed += 1
+                                                bytes_transferred += file_size
+                                                log_messages.append(f"Downloaded from {dir_name}: {filename} ({file_size} bytes)")
+                                            else:
+                                                if os.path.exists(local_file_path):
+                                                    os.remove(local_file_path)
+                                        
+                                        except Exception as e:
+                                            log_messages.append(f"Error downloading {dir_name}/{filename}: {str(e)}")
+                                            if os.path.exists(local_file_path):
+                                                os.remove(local_file_path)
+                            
+                            # Go back to root directory
+                            ftp.cwd(remote_path)
+                        
+                        except Exception as e:
+                            log_messages.append(f"Error processing directory {dir_name}: {str(e)}")
+                
+                log_messages.append(f"Download complete: {files_processed} files, {bytes_transferred} bytes")
+                
+            except Exception as e:
+                log_messages.append(f"Error during download process: {str(e)}")
+            
+            try:
+                ftp.quit()
+            except:
+                pass
             
             return {
                 'success': True,
@@ -671,27 +775,6 @@ class FTPClient:
                 'bytes_transferred': bytes_transferred,
                 'log': log_messages
             }
-            
-            # Handle job group folder organization with job folder name
-            if job and job.job_group_id:
-                try:
-                    from job_group_manager import JobGroupManager
-                    group_manager = JobGroupManager()
-                    local_path = group_manager.ensure_group_folder(
-                        job.job_group_id, 
-                        local_path, 
-                        reference_date=None, 
-                        job_folder_name=job.job_folder_name
-                    )
-                except Exception as e:
-                    # Log error but continue with original path
-                    from utils import log_system_message
-                    log_system_message('warning', f"Failed to apply job group folder: {e}")
-            
-            files_processed = 0
-            bytes_transferred = 0
-            log_messages = []
-            processed_files = set()  # Track files for duplicate detection
             
             def get_unique_filename(file_path):
                 """Generate unique filename if duplicate renaming is enabled"""
