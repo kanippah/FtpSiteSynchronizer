@@ -84,6 +84,13 @@
                                     <div class="form-text">Organize downloads into date-based group folders</div>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="job_folder_name" class="form-label">Job Folder Name</label>
+                                    <input type="text" class="form-control" id="job_folder_name" name="job_folder_name" value="{{ job.job_folder_name if job else '' }}">
+                                    <div class="form-text">Optional: Custom folder name within the job group (e.g., "Invoices", "Reports")</div>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Upload specific fields -->

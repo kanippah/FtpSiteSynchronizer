@@ -172,8 +172,8 @@ class JobGroupManager:
             log_system_message('error', f"Failed to run group: {e}")
             return []
     
-    def get_group_folder_path(self, group_id, base_path, reference_date=None):
-        """Get the organized folder path for a group"""
+    def get_group_folder_path(self, group_id, base_path, reference_date=None, job_folder_name=None):
+        """Get the organized folder path for a group with optional job folder"""
         try:
             group = JobGroup.query.get(group_id)
             if not group:
@@ -181,17 +181,23 @@ class JobGroupManager:
             
             if not group.enable_date_organization:
                 # Just use group folder without date organization
-                return os.path.join(base_path, group.group_folder_name)
+                folder_path = os.path.join(base_path, group.group_folder_name)
+            else:
+                # Create date-based organization
+                if not reference_date:
+                    reference_date = datetime.now()
+                
+                # Format date folder based on group settings
+                date_folder = self._format_date_folder(reference_date, group.date_folder_format)
+                
+                # Combine: base_path/YYYY-MM/group_folder_name
+                folder_path = os.path.join(base_path, date_folder, group.group_folder_name)
             
-            # Create date-based organization
-            if not reference_date:
-                reference_date = datetime.now()
+            # Add job folder if provided: base_path/YYYY-MM/group_folder_name/job_folder_name
+            if job_folder_name:
+                folder_path = os.path.join(folder_path, job_folder_name)
             
-            # Format date folder based on group settings
-            date_folder = self._format_date_folder(reference_date, group.date_folder_format)
-            
-            # Combine: base_path/YYYY-MM/group_folder_name
-            return os.path.join(base_path, date_folder, group.group_folder_name)
+            return folder_path
             
         except Exception as e:
             log_system_message('error', f"Failed to get group folder path: {e}")
@@ -211,10 +217,10 @@ class JobGroupManager:
         
         return format_map.get(format_string, date.strftime('%Y-%m'))
     
-    def ensure_group_folder(self, group_id, base_path, reference_date=None):
-        """Ensure group folder structure exists"""
+    def ensure_group_folder(self, group_id, base_path, reference_date=None, job_folder_name=None):
+        """Ensure group folder structure exists with optional job folder"""
         try:
-            group_path = self.get_group_folder_path(group_id, base_path, reference_date)
+            group_path = self.get_group_folder_path(group_id, base_path, reference_date, job_folder_name)
             ensure_directory_exists(group_path)
             
             log_system_message('info', f"Ensured group folder exists: {group_path}")

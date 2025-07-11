@@ -304,9 +304,13 @@ def new_job():
             job.use_date_folders = bool(request.form.get('use_date_folders'))
             job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
             
-            # Handle job group assignment
+            # Handle job group assignment and job folder name
             if request.form.get('job_group_id'):
                 job.job_group_id = int(request.form['job_group_id'])
+            
+            # Handle job folder name
+            if request.form.get('job_folder_name'):
+                job.job_folder_name = request.form['job_folder_name'].strip()
             
             # For upload jobs
             if job_type == 'upload' and request.form.get('target_site_id'):
@@ -438,11 +442,17 @@ def edit_job(job_id):
             job.use_date_folders = bool(request.form.get('use_date_folders'))
             job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
             
-            # Handle job group assignment
+            # Handle job group assignment and job folder name
             if request.form.get('job_group_id'):
                 job.job_group_id = int(request.form['job_group_id'])
             else:
                 job.job_group_id = None
+            
+            # Handle job folder name
+            if request.form.get('job_folder_name'):
+                job.job_folder_name = request.form['job_folder_name'].strip()
+            else:
+                job.job_folder_name = None
             
             # Handle filename date filter
             job.use_filename_date_filter = bool(request.form.get('use_filename_date_filter'))

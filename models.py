@@ -61,6 +61,7 @@ class Job(db.Model):
     
     # Job grouping for organized execution
     job_group_id = db.Column(db.Integer, db.ForeignKey('job_groups.id'), nullable=True)  # Optional group assignment
+    job_folder_name = db.Column(db.String(100), nullable=True)  # Custom folder name within group folder
     status = db.Column(db.String(20), default='pending')  # 'pending', 'running', 'completed', 'failed'
     last_run = db.Column(db.DateTime, nullable=True)
     next_run = db.Column(db.DateTime, nullable=True)

@@ -415,12 +415,17 @@ class FTPClient:
             use_date_folders = job.use_date_folders if job else False
             date_folder_format = job.date_folder_format if job else 'YYYY-MM-DD'
             
-            # Handle job group folder organization
+            # Handle job group folder organization with job folder name
             if job and job.job_group_id:
                 try:
                     from job_group_manager import JobGroupManager
                     group_manager = JobGroupManager()
-                    local_path = group_manager.ensure_group_folder(job.job_group_id, local_path)
+                    local_path = group_manager.ensure_group_folder(
+                        job.job_group_id, 
+                        local_path, 
+                        reference_date=None, 
+                        job_folder_name=job.job_folder_name
+                    )
                 except Exception as e:
                     # Log error but continue with original path
                     from utils import log_system_message
