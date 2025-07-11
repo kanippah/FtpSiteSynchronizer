@@ -20,10 +20,10 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="group_folder_name" class="form-label">Folder Name <span class="text-danger">*</span></label>
+                            <label for="group_folder_name" class="form-label">Folder Name</label>
                             <input type="text" class="form-control" id="group_folder_name" name="group_folder_name" 
-                                   value="{{ group.group_folder_name if group else '' }}" required>
-                            <div class="form-text">Folder name within date structure (e.g., "invoices", "reports")</div>
+                                   value="{{ group.group_folder_name if group else '' }}">
+                            <div class="form-text">Optional: Custom folder name within date structure. If empty, jobs will create folders directly under date (YYYY-MM/job_folder_name/)</div>
                         </div>
 
                         <div class="mb-3">

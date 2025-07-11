@@ -524,6 +524,17 @@ try:
             else:
                 print('Job folder name column already exists in jobs table')
                 
+            # Migration 7: Make job group folder name optional
+            cursor.execute(\\\"SELECT is_nullable FROM information_schema.columns WHERE table_name = 'job_groups' AND column_name = 'group_folder_name'\\\")
+            result = cursor.fetchone()
+            
+            if result and result[0] == 'NO':
+                print('Making job group folder name optional (allowing null values)...')
+                cursor.execute('ALTER TABLE job_groups ALTER COLUMN group_folder_name DROP NOT NULL;')
+                print('Job group folder name is now optional - when empty, jobs create folders directly under date structure')
+            else:
+                print('Job group folder name is already optional')
+                
             conn.commit()
             cursor.close()
             conn.close()

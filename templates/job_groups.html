@@ -40,9 +40,19 @@
                                     <td>{{ group.description or '-' }}</td>
                                     <td>
                                         {% if group.enable_date_organization %}
-                                        <code>{{ group.date_folder_format }}/{{ group.group_folder_name }}/</code>
+                                            {% if group.group_folder_name %}
+                                            <code>{{ group.date_folder_format }}/{{ group.group_folder_name }}/</code>
+                                            {% else %}
+                                            <code>{{ group.date_folder_format }}/</code>
+                                            <small class="text-muted">(no group folder)</small>
+                                            {% endif %}
                                         {% else %}
-                                        <code>{{ group.group_folder_name }}/</code>
+                                            {% if group.group_folder_name %}
+                                            <code>{{ group.group_folder_name }}/</code>
+                                            {% else %}
+                                            <code>/</code>
+                                            <small class="text-muted">(no group folder)</small>
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                     <td>

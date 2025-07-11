@@ -80,7 +80,7 @@ class JobGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(Text, nullable=True)
-    group_folder_name = db.Column(db.String(100), nullable=False)  # Custom folder name within YYYY-MM
+    group_folder_name = db.Column(db.String(100), nullable=True)  # Optional custom folder name within YYYY-MM
     enable_date_organization = db.Column(db.Boolean, default=True)  # Create YYYY-MM folders
     date_folder_format = db.Column(db.String(20), default='YYYY-MM')  # Date format for group folders
     execution_order = db.Column(db.Integer, default=0)  # Order of execution within group

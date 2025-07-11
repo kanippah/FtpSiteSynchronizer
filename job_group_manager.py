@@ -179,19 +179,20 @@ class JobGroupManager:
             if not group:
                 return base_path
             
-            if not group.enable_date_organization:
-                # Just use group folder without date organization
-                folder_path = os.path.join(base_path, group.group_folder_name)
-            else:
-                # Create date-based organization
+            folder_path = base_path
+            
+            # Add date organization if enabled
+            if group.enable_date_organization:
                 if not reference_date:
                     reference_date = datetime.now()
                 
                 # Format date folder based on group settings
                 date_folder = self._format_date_folder(reference_date, group.date_folder_format)
-                
-                # Combine: base_path/YYYY-MM/group_folder_name
-                folder_path = os.path.join(base_path, date_folder, group.group_folder_name)
+                folder_path = os.path.join(folder_path, date_folder)
+            
+            # Add group folder only if group_folder_name is provided and not empty
+            if group.group_folder_name and group.group_folder_name.strip():
+                folder_path = os.path.join(folder_path, group.group_folder_name)
             
             # Add job folder if provided: base_path/YYYY-MM/group_folder_name/job_folder_name
             if job_folder_name:
