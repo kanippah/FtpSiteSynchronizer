@@ -844,14 +844,21 @@ def api_test_email():
 
 @app.route('/browser')
 def file_browser():
-    """File browser listing all sites"""
+    """File browser listing all sites and network drives"""
     try:
         sites = Site.query.order_by(Site.name).all()
-        return render_template('browser.html', sites=sites)
+        network_drives = NetworkDrive.query.order_by(NetworkDrive.name).all()
+        
+        # Check mount status for network drives
+        drive_manager = NetworkDriveManager()
+        for drive in network_drives:
+            drive.is_mounted = drive_manager.is_mounted(drive.mount_point)
+        
+        return render_template('browser.html', sites=sites, network_drives=network_drives)
     except Exception as e:
         logger.error(f"Error loading file browser: {str(e)}")
         flash(f'Error loading file browser: {str(e)}', 'error')
-        return render_template('browser.html', sites=[])
+        return render_template('browser.html', sites=[], network_drives=[])
 
 @app.route('/browser/<int:site_id>')
 @app.route('/browser/<int:site_id>/<path:remote_path>')
@@ -1285,6 +1292,140 @@ def delete_network_drive(drive_id):
         flash(f'Error deleting network drive: {str(e)}', 'error')
     
     return redirect(url_for('network_drives'))
+
+# Network Drive Browser Routes
+@app.route('/browser/drive/<int:drive_id>')
+@app.route('/browser/drive/<int:drive_id>/<path:relative_path>')
+def browse_network_drive(drive_id, relative_path=''):
+    """Browse files and folders on a mounted network drive"""
+    try:
+        drive = NetworkDrive.query.get_or_404(drive_id)
+        drive_manager = NetworkDriveManager()
+        
+        # Check if drive is mounted
+        if not drive_manager.is_mounted(drive.mount_point):
+            flash(f'Network drive "{drive.name}" is not mounted. Please mount it first.', 'warning')
+            return redirect(url_for('file_browser'))
+        
+        # Build the full path
+        if relative_path:
+            full_path = os.path.join(drive.mount_point, relative_path)
+        else:
+            full_path = drive.mount_point
+        
+        # Normalize the path and ensure it's within the mount point
+        full_path = os.path.normpath(full_path)
+        if not full_path.startswith(os.path.normpath(drive.mount_point)):
+            flash('Invalid path - outside of mount point', 'error')
+            return redirect(url_for('browse_network_drive', drive_id=drive_id))
+        
+        # Check if path exists
+        if not os.path.exists(full_path):
+            flash(f'Path does not exist: {relative_path}', 'error')
+            return redirect(url_for('browse_network_drive', drive_id=drive_id))
+        
+        # Get directory listing
+        items = []
+        current_path = relative_path or ''
+        parent_path = None
+        
+        if current_path:
+            parent_path = os.path.dirname(current_path)
+            if parent_path == current_path:  # Root level
+                parent_path = ''
+        
+        try:
+            if os.path.isdir(full_path):
+                for item_name in sorted(os.listdir(full_path)):
+                    item_path = os.path.join(full_path, item_name)
+                    item_relative_path = os.path.join(current_path, item_name) if current_path else item_name
+                    
+                    # Skip hidden files
+                    if item_name.startswith('.'):
+                        continue
+                    
+                    try:
+                        stat_info = os.stat(item_path)
+                        is_dir = os.path.isdir(item_path)
+                        
+                        items.append({
+                            'name': item_name,
+                            'path': item_relative_path,
+                            'is_directory': is_dir,
+                            'size': stat_info.st_size if not is_dir else 0,
+                            'modified': datetime.fromtimestamp(stat_info.st_mtime),
+                            'permissions': oct(stat_info.st_mode)[-3:]
+                        })
+                    except (OSError, IOError) as e:
+                        # Skip files we can't read
+                        continue
+            else:
+                flash('Selected path is not a directory', 'error')
+                return redirect(url_for('browse_network_drive', drive_id=drive_id))
+                
+        except PermissionError:
+            flash('Permission denied accessing this directory', 'error')
+            return redirect(url_for('browse_network_drive', drive_id=drive_id))
+        
+        # Add breadcrumb navigation
+        path_parts = []
+        if current_path:
+            parts = current_path.split(os.sep)
+            current = ''
+            for part in parts:
+                if part:  # Skip empty parts
+                    current = os.path.join(current, part) if current else part
+                    path_parts.append({
+                        'name': part,
+                        'path': current
+                    })
+        
+        return render_template('browser_network_drive.html',
+                             drive=drive,
+                             current_path=current_path,
+                             parent_path=parent_path,
+                             items=items,
+                             path_parts=path_parts)
+                             
+    except Exception as e:
+        logger.error(f"Error browsing network drive {drive_id}: {str(e)}")
+        flash(f'Error browsing network drive: {str(e)}', 'error')
+        return redirect(url_for('file_browser'))
+
+@app.route('/browser/drive/<int:drive_id>/download/<path:relative_path>')
+def download_network_drive_file(drive_id, relative_path):
+    """Download a file from a mounted network drive"""
+    try:
+        drive = NetworkDrive.query.get_or_404(drive_id)
+        drive_manager = NetworkDriveManager()
+        
+        # Check if drive is mounted
+        if not drive_manager.is_mounted(drive.mount_point):
+            flash(f'Network drive "{drive.name}" is not mounted.', 'error')
+            return redirect(url_for('file_browser'))
+        
+        # Build the full path
+        full_path = os.path.join(drive.mount_point, relative_path)
+        full_path = os.path.normpath(full_path)
+        
+        # Security check
+        if not full_path.startswith(os.path.normpath(drive.mount_point)):
+            flash('Invalid file path', 'error')
+            return redirect(url_for('browse_network_drive', drive_id=drive_id))
+        
+        # Check if file exists and is a file
+        if not os.path.exists(full_path) or not os.path.isfile(full_path):
+            flash('File not found', 'error')
+            return redirect(url_for('browse_network_drive', drive_id=drive_id))
+        
+        # Send file
+        filename = os.path.basename(relative_path)
+        return send_file(full_path, as_attachment=True, download_name=filename)
+        
+    except Exception as e:
+        logger.error(f"Error downloading file from network drive: {str(e)}")
+        flash(f'Error downloading file: {str(e)}', 'error')
+        return redirect(url_for('browse_network_drive', drive_id=drive_id))
 
 @app.errorhandler(404)
 def not_found(error):

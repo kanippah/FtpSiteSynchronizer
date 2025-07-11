@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Browse {{ drive.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>
+                        <i data-feather="hard-drive" class="me-2"></i>
+                        Network Drive: {{ drive.name }}
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <i data-feather="folder" class="me-1"></i>
+                        <code>{{ drive.mount_point }}</code>
+                        {% if current_path %}
+                            / {{ current_path }}
+                        {% endif %}
+                    </p>
+                </div>
+                <a href="{{ url_for('file_browser') }}" class="btn btn-outline-secondary">
+                    <i data-feather="arrow-left" class="me-2"></i>Back to Browser
+                </a>
+            </div>
+
+            <!-- Breadcrumb Navigation -->
+            {% if path_parts %}
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('browse_network_drive', drive_id=drive.id) }}">
+                            <i data-feather="home" class="me-1"></i>Root
+                        </a>
+                    </li>
+                    {% for part in path_parts %}
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('browse_network_drive', drive_id=drive.id, relative_path=part.path) }}">
+                            {{ part.name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </nav>
+            {% endif %}
+
+            <!-- File Listing -->
+            <div class="card">
+                <div class="card-body">
+                    {% if items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Modified</th>
+                                        <th>Permissions</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Parent Directory -->
+                                    {% if parent_path is not none %}
+                                    <tr class="table-light">
+                                        <td colspan="6">
+                                            <a href="{{ url_for('browse_network_drive', drive_id=drive.id, relative_path=parent_path) if parent_path else url_for('browse_network_drive', drive_id=drive.id) }}" class="text-decoration-none">
+                                                <i data-feather="arrow-up" class="me-2"></i>
+                                                <strong>.. (Parent Directory)</strong>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    <!-- Directory and File Listings -->
+                                    {% for item in items %}
+                                    <tr>
+                                        <td>
+                                            {% if item.is_directory %}
+                                                <i data-feather="folder" class="me-2 text-primary"></i>
+                                                <a href="{{ url_for('browse_network_drive', drive_id=drive.id, relative_path=item.path) }}" class="text-decoration-none">
+                                                    {{ item.name }}
+                                                </a>
+                                            {% else %}
+                                                <i data-feather="file" class="me-2 text-secondary"></i>
+                                                {{ item.name }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.is_directory %}
+                                                <span class="badge bg-primary">Folder</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">File</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if not item.is_directory %}
+                                                {% if item.size < 1024 %}
+                                                    {{ item.size }} B
+                                                {% elif item.size < 1024 * 1024 %}
+                                                    {{ "%.1f"|format(item.size / 1024) }} KB
+                                                {% elif item.size < 1024 * 1024 * 1024 %}
+                                                    {{ "%.1f"|format(item.size / 1024 / 1024) }} MB
+                                                {% else %}
+                                                    {{ "%.1f"|format(item.size / 1024 / 1024 / 1024) }} GB
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ item.modified.strftime('%Y-%m-%d %H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <code class="small">{{ item.permissions }}</code>
+                                        </td>
+                                        <td>
+                                            {% if not item.is_directory %}
+                                                <a href="{{ url_for('download_network_drive_file', drive_id=drive.id, relative_path=item.path) }}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Download">
+                                                    <i data-feather="download"></i>
+                                                </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i data-feather="folder" class="text-muted" style="width: 4rem; height: 4rem;"></i>
+                            <h5 class="text-muted mt-3">Empty Directory</h5>
+                            <p class="text-muted">This directory doesn't contain any files or folders.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Drive Information -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Drive Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Drive Name:</strong></td>
+                                    <td>{{ drive.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Drive Type:</strong></td>
+                                    <td><span class="badge bg-secondary">{{ drive.drive_type|upper }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Server Path:</strong></td>
+                                    <td><code>{{ drive.server_path }}</code></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Mount Point:</strong></td>
+                                    <td><code>{{ drive.mount_point }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td><span class="badge bg-success">Mounted</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Mount Options:</strong></td>
+                                    <td><code>{{ drive.mount_options or 'default' }}</code></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Feather icons
+    feather.replace();
+</script>
+{% endblock %}

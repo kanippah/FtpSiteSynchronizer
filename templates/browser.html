@@ -13,8 +13,13 @@
                 </a>
             </div>
 
-            {% if sites %}
-                <div class="card">
+            {% if sites or network_drives %}
+                <!-- Remote Sites -->
+                {% if sites %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0"><i data-feather="server" class="me-2"></i>Remote Sites</h5>
+                    </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-hover">
@@ -87,10 +92,82 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
+                
+                <!-- Network Drives -->
+                {% if network_drives %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0"><i data-feather="hard-drive" class="me-2"></i>Network Drives</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Drive Name</th>
+                                        <th>Type</th>
+                                        <th>Server Path</th>
+                                        <th>Mount Point</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for drive in network_drives %}
+                                    <tr>
+                                        <td>
+                                            <i data-feather="hard-drive" class="me-2"></i>
+                                            <strong>{{ drive.name }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-secondary">{{ drive.drive_type|upper }}</span>
+                                        </td>
+                                        <td>
+                                            <i data-feather="globe" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                            <code>{{ drive.server_path }}</code>
+                                        </td>
+                                        <td>
+                                            <i data-feather="folder" class="me-1" style="width: 1rem; height: 1rem;"></i>
+                                            <code>{{ drive.mount_point }}</code>
+                                        </td>
+                                        <td>
+                                            {% if drive.is_mounted %}
+                                                <span class="badge bg-success">Mounted</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Not Mounted</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                {% if drive.is_mounted %}
+                                                <a href="{{ url_for('browse_network_drive', drive_id=drive.id) }}" class="btn btn-sm btn-primary" title="Browse Files">
+                                                    <i data-feather="folder-open"></i>
+                                                </a>
+                                                {% else %}
+                                                <button class="btn btn-sm btn-primary" disabled title="Mount drive first">
+                                                    <i data-feather="folder-open"></i>
+                                                </button>
+                                                {% endif %}
+                                                <a href="{{ url_for('network_drives') }}" class="btn btn-sm btn-outline-secondary" title="Manage Drive">
+                                                    <i data-feather="settings"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             {% else %}
                 <div class="alert alert-info" role="alert">
                     <i data-feather="info"></i>
-                    No FTP/SFTP/NFS sites configured. <a href="{{ url_for('new_site') }}" class="alert-link">Add a site</a> to start browsing files.
+                    No sites or network drives configured. 
+                    <a href="{{ url_for('new_site') }}" class="alert-link">Add a site</a> or 
+                    <a href="{{ url_for('network_drives') }}" class="alert-link">configure network drives</a> to start browsing files.
                 </div>
             {% endif %}
         </div>
