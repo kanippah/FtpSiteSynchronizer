@@ -142,6 +142,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Job Execution Issues Resolved
+- **Connection Timeouts Fixed**: Increased FTP/SFTP timeout from 10 to 30 seconds for better reliability
+- **Job Configuration Fixed**: Corrected download_all setting and cron scheduling issues
+- **Folder Organization Verified**: Successfully tested downloads with proper folder structure creation
+- **File Downloads Working**: Verified actual file downloads to organized folder structure (downloads/2025-07/Job-Folder-Name/)
+- **Performance Optimized**: Added connection keep-alive and timeout protection for FTP operations
+
 ### July 2025 - Nested Folder Structure Implementation
 - **Job Folder Names**: Added `job_folder_name` column to jobs table for individual job organization within groups
 - **Three-Level Hierarchy**: Implemented YYYY-MM/group_folder_name/job_folder_name/ folder structure

@@ -113,13 +113,14 @@ class FTPClient:
                     
                     for filename in file_list:
                         try:
-                            # Get file details
-                            file_info = self.connection.mlsd(filename)
+                            # Get file details with timeout protection
+                            self.connection.voidcmd('NOOP')  # Keep connection alive
+                            file_info = list(self.connection.mlsd(filename))
                             for name, facts in file_info:
                                 if name == filename:
                                     files.append({
                                         'name': name,
-                                        'size': facts.get('size', 0),
+                                        'size': int(facts.get('size', 0)),
                                         'modify': facts.get('modify', ''),
                                         'type': 'directory' if facts.get('type') == 'dir' else 'file'
                                     })
