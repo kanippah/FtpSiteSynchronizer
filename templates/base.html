@@ -47,6 +47,21 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['job_groups', 'new_job_group', 'edit_job_group'] %}active{% endif %}" href="{{ url_for('job_groups') }}">
+                            <i data-feather="folder" class="me-1"></i>Job Groups
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['network_drives', 'new_network_drive'] %}active{% endif %}" href="{{ url_for('network_drives') }}">
+                            <i data-feather="hard-drive" class="me-1"></i>Network Drives
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'file_browser' %}active{% endif %}" href="{{ url_for('file_browser') }}">
+                            <i data-feather="folder-open" class="me-1"></i>Browser
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}" href="{{ url_for('logs') }}">
                             <i data-feather="file-text" class="me-1"></i>Logs
                         </a>

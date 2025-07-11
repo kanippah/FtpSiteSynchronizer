@@ -69,6 +69,23 @@
                             </div>
                         </div>
                         
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="job_group_id" class="form-label">Job Group</label>
+                                    <select class="form-select" id="job_group_id" name="job_group_id">
+                                        <option value="">No group (individual job)</option>
+                                        {% for group in job_groups %}
+                                        <option value="{{ group.id }}" {{ 'selected' if job and job.job_group_id == group.id else '' }}>
+                                            {{ group.name }} ({{ group.group_folder_name }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Organize downloads into date-based group folders</div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Upload specific fields -->
                         <div id="upload_fields" style="display: none;">
                             <div class="mb-3">

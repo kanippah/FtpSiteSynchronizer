@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}New Network Drive{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Configure Network Drive</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Drive Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <div class="form-text">Friendly name for the network drive</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="drive_type" class="form-label">Drive Type <span class="text-danger">*</span></label>
+                            <select class="form-control" id="drive_type" name="drive_type" required>
+                                <option value="">Select drive type...</option>
+                                <option value="cifs">CIFS/SMB (Windows shares, Samba)</option>
+                                <option value="nfs">NFS (Network File System)</option>
+                                <option value="local">Local Directory</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="server_path" class="form-label">Server Path <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="server_path" name="server_path" required>
+                            <div class="form-text" id="server_path_help">
+                                Examples: //server/share (CIFS), server:/export (NFS), /local/path (Local)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mount_point" class="form-label">Mount Point <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="mount_point" name="mount_point" required>
+                            <div class="form-text">Local directory where drive will be mounted (e.g., /mnt/mydrive)</div>
+                        </div>
+
+                        <div class="mb-3" id="credentials_section">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username">
+                            <div class="form-text">Username for authentication (if required)</div>
+                        </div>
+
+                        <div class="mb-3" id="password_section">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password">
+                            <div class="form-text">Password for authentication (if required)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mount_options" class="form-label">Mount Options</label>
+                            <input type="text" class="form-control" id="mount_options" name="mount_options">
+                            <div class="form-text" id="mount_options_help">
+                                Advanced mount options (optional)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="auto_mount" 
+                                       name="auto_mount" checked>
+                                <label class="form-check-label" for="auto_mount">
+                                    Auto-mount on startup
+                                </label>
+                            </div>
+                            <div class="form-text">Automatically mount this drive when the system starts</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('network_drives') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Drive</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const driveType = document.getElementById('drive_type');
+    const serverPathHelp = document.getElementById('server_path_help');
+    const mountOptionsHelp = document.getElementById('mount_options_help');
+    const credentialsSection = document.getElementById('credentials_section');
+    const passwordSection = document.getElementById('password_section');
+    
+    function updateFormHelp() {
+        const type = driveType.value;
+        
+        switch(type) {
+            case 'cifs':
+                serverPathHelp.textContent = 'Example: //server/share or //192.168.1.100/documents';
+                mountOptionsHelp.textContent = 'Example: vers=3.0,uid=1000,gid=1000';
+                credentialsSection.style.display = 'block';
+                passwordSection.style.display = 'block';
+                break;
+            case 'nfs':
+                serverPathHelp.textContent = 'Example: server:/export or 192.168.1.100:/var/nfs/share';
+                mountOptionsHelp.textContent = 'Example: vers=4,rsize=8192,wsize=8192';
+                credentialsSection.style.display = 'none';
+                passwordSection.style.display = 'none';
+                break;
+            case 'local':
+                serverPathHelp.textContent = 'Example: /home/user/shared or /media/storage';
+                mountOptionsHelp.textContent = 'Example: bind,ro (for bind mounts)';
+                credentialsSection.style.display = 'none';
+                passwordSection.style.display = 'none';
+                break;
+            default:
+                serverPathHelp.textContent = 'Path format depends on drive type selection';
+                mountOptionsHelp.textContent = 'Advanced mount options (optional)';
+                credentialsSection.style.display = 'block';
+                passwordSection.style.display = 'block';
+        }
+    }
+    
+    driveType.addEventListener('change', updateFormHelp);
+    updateFormHelp(); // Initial state
+});
+</script>
+{% endblock %}

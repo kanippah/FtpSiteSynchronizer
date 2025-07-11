@@ -142,6 +142,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Job Groups & Network Drive Enhancement
+- **Job Group Architecture**: Implemented job grouping with date-based folder organization (YYYY-MM/GroupName/)
+- **Network Drive Support**: Added Ubuntu 24.04 CIFS/NFS network drive mounting and management
+- **Database Enhancements**: New JobGroup and NetworkDrive models with proper relationships
+- **Enhanced File Organization**: Groups automatically create structured folders for systematic file management
+- **Web Interface**: Added complete management interfaces for job groups and network drives
+- **FTP Client Integration**: Updated download_files_enhanced to support automatic group folder creation
+
 ### July 2025 - Advanced Download Features Migration
 - **Architectural Change**: Moved advanced download features from site-level to job-level configuration
 - **Database Changes**: Added 4 new columns to jobs table, removed from sites table

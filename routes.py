@@ -1,11 +1,13 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, send_file, abort
 from app import app, db, scheduler
-from models import Site, Job, JobLog, Settings, SystemLog
+from models import Site, Job, JobLog, Settings, SystemLog, JobGroup, NetworkDrive
 from crypto_utils import encrypt_password, decrypt_password
 from ftp_client import FTPClient
 from ftp_browser import FTPBrowser
 from email_service import send_notification, send_test_email
 from utils import log_system_message, get_setting, set_setting
+from job_group_manager import JobGroupManager
+from network_drive_manager import NetworkDriveManager
 from datetime import datetime, timedelta
 import os
 import json
@@ -302,6 +304,10 @@ def new_job():
             job.use_date_folders = bool(request.form.get('use_date_folders'))
             job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
             
+            # Handle job group assignment
+            if request.form.get('job_group_id'):
+                job.job_group_id = int(request.form['job_group_id'])
+            
             # For upload jobs
             if job_type == 'upload' and request.form.get('target_site_id'):
                 job.target_site_id = int(request.form['target_site_id'])
@@ -322,11 +328,12 @@ def new_job():
             db.session.rollback()
     
     sites = Site.query.order_by(Site.name).all()
+    job_groups = JobGroup.query.order_by(JobGroup.name).all()
     
     # Pre-select site if passed as parameter
     selected_site_id = request.args.get('site_id', type=int)
     
-    return render_template('job_form.html', sites=sites, selected_site_id=selected_site_id)
+    return render_template('job_form.html', sites=sites, job_groups=job_groups, selected_site_id=selected_site_id)
 
 @app.route('/jobs/<int:job_id>/run')
 def run_job(job_id):
@@ -431,6 +438,12 @@ def edit_job(job_id):
             job.use_date_folders = bool(request.form.get('use_date_folders'))
             job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
             
+            # Handle job group assignment
+            if request.form.get('job_group_id'):
+                job.job_group_id = int(request.form['job_group_id'])
+            else:
+                job.job_group_id = None
+            
             # Handle filename date filter
             job.use_filename_date_filter = bool(request.form.get('use_filename_date_filter'))
             if job.use_filename_date_filter:
@@ -457,7 +470,8 @@ def edit_job(job_id):
         
         # GET request - show edit form
         sites = Site.query.order_by(Site.name).all()
-        return render_template('edit_job.html', job=job, sites=sites)
+        job_groups = JobGroup.query.order_by(JobGroup.name).all()
+        return render_template('edit_job.html', job=job, sites=sites, job_groups=job_groups)
         
     except Exception as e:
         logger.error(f"Error editing job: {str(e)}")
@@ -1042,6 +1056,235 @@ def debug_nfs_status(site_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Job Group Management Routes
+@app.route('/job-groups')
+def job_groups():
+    """List all job groups"""
+    try:
+        group_manager = JobGroupManager()
+        groups = group_manager.get_all_groups()
+        
+        # Get stats for each group
+        group_stats = {}
+        for group in groups:
+            stats = group_manager.get_group_stats(group.id)
+            if stats:
+                group_stats[group.id] = stats
+        
+        return render_template('job_groups.html', groups=groups, group_stats=group_stats)
+    except Exception as e:
+        logger.error(f"Error loading job groups: {str(e)}")
+        flash(f'Error loading job groups: {str(e)}', 'error')
+        return render_template('job_groups.html', groups=[], group_stats={})
+
+@app.route('/job-groups/new', methods=['GET', 'POST'])
+def new_job_group():
+    """Create a new job group"""
+    if request.method == 'POST':
+        try:
+            group_manager = JobGroupManager()
+            
+            group_id = group_manager.create_group(
+                name=request.form['name'],
+                group_folder_name=request.form['group_folder_name'],
+                description=request.form.get('description', ''),
+                enable_date_organization=request.form.get('enable_date_organization') == 'on',
+                date_folder_format=request.form.get('date_folder_format', 'YYYY-MM'),
+                execution_order=int(request.form.get('execution_order', 0))
+            )
+            
+            flash('Job group created successfully', 'success')
+            return redirect(url_for('job_groups'))
+            
+        except Exception as e:
+            logger.error(f"Error creating job group: {str(e)}")
+            flash(f'Error creating job group: {str(e)}', 'error')
+    
+    return render_template('job_group_form.html')
+
+@app.route('/job-groups/<int:group_id>/edit', methods=['GET', 'POST'])
+def edit_job_group(group_id):
+    """Edit a job group"""
+    group = JobGroup.query.get_or_404(group_id)
+    
+    if request.method == 'POST':
+        try:
+            group_manager = JobGroupManager()
+            
+            group_manager.update_group(group_id,
+                name=request.form['name'],
+                group_folder_name=request.form['group_folder_name'],
+                description=request.form.get('description', ''),
+                enable_date_organization=request.form.get('enable_date_organization') == 'on',
+                date_folder_format=request.form.get('date_folder_format', 'YYYY-MM'),
+                execution_order=int(request.form.get('execution_order', 0))
+            )
+            
+            flash('Job group updated successfully', 'success')
+            return redirect(url_for('job_groups'))
+            
+        except Exception as e:
+            logger.error(f"Error updating job group: {str(e)}")
+            flash(f'Error updating job group: {str(e)}', 'error')
+    
+    return render_template('job_group_form.html', group=group)
+
+@app.route('/job-groups/<int:group_id>/delete', methods=['POST'])
+def delete_job_group(group_id):
+    """Delete a job group"""
+    try:
+        group_manager = JobGroupManager()
+        unassign_jobs = request.form.get('unassign_jobs') == 'on'
+        
+        if group_manager.delete_group(group_id, unassign_jobs):
+            flash('Job group deleted successfully', 'success')
+        else:
+            flash('Error deleting job group', 'error')
+            
+    except Exception as e:
+        logger.error(f"Error deleting job group: {str(e)}")
+        flash(f'Error deleting job group: {str(e)}', 'error')
+    
+    return redirect(url_for('job_groups'))
+
+@app.route('/job-groups/<int:group_id>/run', methods=['POST'])
+def run_job_group(group_id):
+    """Execute all jobs in a group"""
+    try:
+        group_manager = JobGroupManager()
+        results = group_manager.run_group(group_id)
+        
+        successful_jobs = len([r for r in results if r.get('success', False)])
+        total_jobs = len(results)
+        
+        if successful_jobs == total_jobs:
+            flash(f'All {total_jobs} jobs in group executed successfully', 'success')
+        elif successful_jobs > 0:
+            flash(f'{successful_jobs} of {total_jobs} jobs executed successfully', 'warning')
+        else:
+            flash(f'All {total_jobs} jobs failed to execute', 'error')
+            
+    except Exception as e:
+        logger.error(f"Error executing job group: {str(e)}")
+        flash(f'Error executing job group: {str(e)}', 'error')
+    
+    return redirect(url_for('job_groups'))
+
+# Network Drive Management Routes
+@app.route('/network-drives')
+def network_drives():
+    """List all network drives"""
+    try:
+        drives = NetworkDrive.query.order_by(NetworkDrive.name).all()
+        drive_manager = NetworkDriveManager()
+        
+        # Update mount status for all drives
+        for drive in drives:
+            status = drive_manager.get_mount_status(drive.id)
+            drive.current_status = status
+        
+        return render_template('network_drives.html', drives=drives)
+    except Exception as e:
+        logger.error(f"Error loading network drives: {str(e)}")
+        flash(f'Error loading network drives: {str(e)}', 'error')
+        return render_template('network_drives.html', drives=[])
+
+@app.route('/network-drives/new', methods=['GET', 'POST'])
+def new_network_drive():
+    """Create a new network drive"""
+    if request.method == 'POST':
+        try:
+            drive_manager = NetworkDriveManager()
+            
+            drive_id = drive_manager.create_drive(
+                name=request.form['name'],
+                drive_type=request.form['drive_type'],
+                server_path=request.form['server_path'],
+                mount_point=request.form['mount_point'],
+                username=request.form.get('username', ''),
+                password=request.form.get('password', ''),
+                mount_options=request.form.get('mount_options', ''),
+                auto_mount=request.form.get('auto_mount') == 'on'
+            )
+            
+            flash('Network drive created successfully', 'success')
+            return redirect(url_for('network_drives'))
+            
+        except Exception as e:
+            logger.error(f"Error creating network drive: {str(e)}")
+            flash(f'Error creating network drive: {str(e)}', 'error')
+    
+    return render_template('network_drive_form.html')
+
+@app.route('/network-drives/<int:drive_id>/mount', methods=['POST'])
+def mount_network_drive(drive_id):
+    """Mount a network drive"""
+    try:
+        drive_manager = NetworkDriveManager()
+        
+        if drive_manager.mount_drive(drive_id):
+            flash('Network drive mounted successfully', 'success')
+        else:
+            flash('Error mounting network drive', 'error')
+            
+    except Exception as e:
+        logger.error(f"Error mounting network drive: {str(e)}")
+        flash(f'Error mounting network drive: {str(e)}', 'error')
+    
+    return redirect(url_for('network_drives'))
+
+@app.route('/network-drives/<int:drive_id>/unmount', methods=['POST'])
+def unmount_network_drive(drive_id):
+    """Unmount a network drive"""
+    try:
+        drive_manager = NetworkDriveManager()
+        
+        if drive_manager.unmount_drive(drive_id):
+            flash('Network drive unmounted successfully', 'success')
+        else:
+            flash('Error unmounting network drive', 'error')
+            
+    except Exception as e:
+        logger.error(f"Error unmounting network drive: {str(e)}")
+        flash(f'Error unmounting network drive: {str(e)}', 'error')
+    
+    return redirect(url_for('network_drives'))
+
+@app.route('/network-drives/<int:drive_id>/test', methods=['POST'])
+def test_network_drive(drive_id):
+    """Test network drive connection"""
+    try:
+        drive_manager = NetworkDriveManager()
+        result = drive_manager.test_connection(drive_id)
+        
+        if result['success']:
+            flash(result['message'], 'success')
+        else:
+            flash(f"Connection test failed: {result['message']}", 'error')
+            
+    except Exception as e:
+        logger.error(f"Error testing network drive: {str(e)}")
+        flash(f'Error testing network drive: {str(e)}', 'error')
+    
+    return redirect(url_for('network_drives'))
+
+@app.route('/network-drives/<int:drive_id>/delete', methods=['POST'])
+def delete_network_drive(drive_id):
+    """Delete a network drive"""
+    try:
+        drive_manager = NetworkDriveManager()
+        
+        if drive_manager.delete_drive(drive_id):
+            flash('Network drive deleted successfully', 'success')
+        else:
+            flash('Error deleting network drive', 'error')
+            
+    except Exception as e:
+        logger.error(f"Error deleting network drive: {str(e)}")
+        flash(f'Error deleting network drive: {str(e)}', 'error')
+    
+    return redirect(url_for('network_drives'))
 
 @app.errorhandler(404)
 def not_found(error):

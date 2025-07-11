@@ -363,6 +363,17 @@ class FTPClient:
             use_date_folders = job.use_date_folders if job else False
             date_folder_format = job.date_folder_format if job else 'YYYY-MM-DD'
             
+            # Handle job group folder organization
+            if job and job.job_group_id:
+                try:
+                    from job_group_manager import JobGroupManager
+                    group_manager = JobGroupManager()
+                    local_path = group_manager.ensure_group_folder(job.job_group_id, local_path)
+                except Exception as e:
+                    # Log error but continue with original path
+                    from utils import log_system_message
+                    log_system_message('warning', f"Failed to apply job group folder: {e}")
+            
             files_processed = 0
             bytes_transferred = 0
             log_messages = []
