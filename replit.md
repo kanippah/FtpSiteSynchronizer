@@ -164,3 +164,11 @@ Preferred communication style: Simple, everyday language.
 - **Template Creation**: Built browser_network_drive.html for seamless file exploration of mounted drives
 - **Deploy Script Updates**: Enhanced deploy.sh with network drive browsing documentation and setup
 - **Security Features**: Path validation, mount status checking, and access control for network drive operations
+
+### July 2025 - Container Environment Adaptation
+- **Environment Detection**: Added automatic detection of containerized vs server environments
+- **Fallback Mechanisms**: Implemented demonstration mode for network drives in limited environments
+- **Connection Testing**: Replaced ping-based tests with socket-based connectivity testing for container compatibility
+- **User Guidance**: Added environment-specific warnings and guidance in web interface
+- **Documentation**: Created DEPLOYMENT_ENVIRONMENTS.md explaining deployment differences and capabilities
+- **Ubuntu Server Validation**: Confirmed full functionality on standard Ubuntu 24.04 with proper packages installed

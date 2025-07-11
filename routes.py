@@ -1186,16 +1186,19 @@ def network_drives():
         drives = NetworkDrive.query.order_by(NetworkDrive.name).all()
         drive_manager = NetworkDriveManager()
         
+        # Check if we're in a container environment
+        container_mode = not drive_manager._check_mount_capabilities()
+        
         # Update mount status for all drives
         for drive in drives:
             status = drive_manager.get_mount_status(drive.id)
             drive.current_status = status
         
-        return render_template('network_drives.html', drives=drives)
+        return render_template('network_drives.html', drives=drives, container_mode=container_mode)
     except Exception as e:
         logger.error(f"Error loading network drives: {str(e)}")
         flash(f'Error loading network drives: {str(e)}', 'error')
-        return render_template('network_drives.html', drives=[])
+        return render_template('network_drives.html', drives=[], container_mode=True)
 
 @app.route('/network-drives/new', methods=['GET', 'POST'])
 def new_network_drive():

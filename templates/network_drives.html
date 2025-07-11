@@ -11,6 +11,16 @@
         </a>
     </div>
 
+    {% if container_mode %}
+    <div class="alert alert-warning">
+        <i data-feather="alert-triangle"></i>
+        <strong>Container Environment Detected:</strong><br>
+        This application is running in a containerized environment where network mounting has limitations.<br>
+        Network drive functionality will create demonstration folders for testing purposes.<br>
+        For full mounting capabilities, deploy this application on a standard Ubuntu server with sudo privileges.
+    </div>
+    {% endif %}
+
     <div class="row">
         <div class="col-12">
             {% if drives %}
