@@ -156,3 +156,11 @@ Preferred communication style: Simple, everyday language.
 - **Enhanced Flexibility**: Different jobs using same site can now have different download strategies
 - **Migration Support**: Updated deploy.sh to handle smooth migration from old to new structure
 - **Job-Level Features**: Recursive download, duplicate renaming, date-based folders now per-job
+
+### July 2025 - Network Drive Browsing Enhancement
+- **File Browser Enhancement**: Extended existing file browser to support network drive browsing
+- **Dual Interface**: Unified browser showing both remote sites (FTP/SFTP/NFS) and local network drives
+- **Network Drive Routes**: Added browse_network_drive and download_network_drive_file routes with security validation
+- **Template Creation**: Built browser_network_drive.html for seamless file exploration of mounted drives
+- **Deploy Script Updates**: Enhanced deploy.sh with network drive browsing documentation and setup
+- **Security Features**: Path validation, mount status checking, and access control for network drive operations

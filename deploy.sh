@@ -2,7 +2,14 @@
 
 # FTP/SFTP/NFS Manager - Ubuntu 24.04 Deployment Script
 # This script deploys the application on a fresh Ubuntu 24.04 server
-# Enhanced with Job Groups and Network Drive mounting support
+# Enhanced with Job Groups, Network Drive mounting, and File Browser support
+#
+# Latest Features (July 2025):
+# - Network Drive Browsing: Browse mounted CIFS/NFS drives through web interface
+# - Job Groups with date-based folder organization (YYYY-MM/GroupName/)
+# - Enhanced file browser supporting both remote sites and local network drives
+# - Download functionality for files from any browsable source
+# - Comprehensive security checks and path validation
 
 set +e  # Continue on errors
 
@@ -263,6 +270,13 @@ fi
 # Create required directories
 sudo -u $APP_USER mkdir -p logs downloads static/uploads
 sudo -u $APP_USER chmod 755 logs downloads static/uploads
+
+# Create mount point directory for network drives
+mkdir -p /mnt
+chmod 755 /mnt
+
+# Ensure proper permissions for network drive operations
+chown root:root /mnt
 
 print_success "Repository cloned and directories created"
 
@@ -791,7 +805,26 @@ echo "Advanced Download Features:"
 echo "  - Recursive Download: Traverse all subfolders and flatten file structure"
 echo "  - Duplicate File Handling: Auto-rename duplicates with _1, _2, etc."
 echo "  - Date-based Folders: Organize downloads by date (YYYY-MM-DD format)"
-echo "  - Site-level Configuration: Per-site advanced feature settings"
+echo "  - Job-level Configuration: Per-job advanced feature settings"
+echo ""
+echo "Job Groups & Organization:"
+echo "  - Job Groups: Organize related jobs with custom execution order"
+echo "  - Date-based Folders: Auto-create YYYY-MM/GroupName/ structure"
+echo "  - Group Management: Full CRUD operations via web interface"
+echo ""
+echo "Network Drive Support:"
+echo "  - CIFS/SMB Mounting: Windows/Samba share mounting"
+echo "  - NFS Mounting: Network File System mounting"
+echo "  - Auto-mount Support: Mount drives on system startup"
+echo "  - Browse Integration: File browser for mounted network drives"
+echo "  - Download Support: Direct file downloads from mounted drives"
+echo ""
+echo "File Browser Features:"
+echo "  - Remote Site Browsing: FTP/SFTP/NFS site file exploration"
+echo "  - Network Drive Browsing: Local mounted drive file exploration"
+echo "  - Download Functionality: Single file download from any source"
+echo "  - Breadcrumb Navigation: Easy directory navigation"
+echo "  - Security Checks: Path validation and access control"
 echo ""
 echo "NFS Configuration:"
 echo "  - NFS Services: Enabled and running"
