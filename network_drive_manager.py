@@ -42,7 +42,9 @@ class NetworkDriveManager:
                 raise Exception(f"Unsupported drive type: {drive.drive_type}")
                 
         except Exception as e:
-            log_system_message('error', f"Failed to mount drive {drive.name}: {e}")
+            error_msg = str(e)
+            log_system_message('error', f"Failed to mount drive {drive.name}: {error_msg}", 'network_drives')
+            self.logger.error(f"Mount error details for drive {drive_id}: {error_msg}")
             return False
     
     def unmount_drive(self, drive_id):
@@ -78,12 +80,22 @@ class NetworkDriveManager:
     
     def _mount_cifs(self, drive):
         """Mount a CIFS/SMB drive"""
+        creds_file = None
         try:
+            log_system_message('info', f"Starting CIFS mount for drive {drive.name} to {drive.mount_point}", 'network_drives')
+            
+            # Check if mount.cifs is available
+            cifs_check = subprocess.run(['which', 'mount.cifs'], capture_output=True, text=True)
+            if cifs_check.returncode != 0:
+                raise Exception("mount.cifs utility not found. Install cifs-utils package: sudo apt install cifs-utils")
+            
             # Prepare credentials
             username = drive.username or 'guest'
             password = ''
             if drive.password_encrypted:
                 password = decrypt_password(drive.password_encrypted)
+            
+            log_system_message('info', f"Using username: {username} for CIFS mount", 'network_drives')
             
             # Create credentials file
             creds_file = f"/tmp/cifs_creds_{drive.id}"
@@ -93,44 +105,59 @@ class NetworkDriveManager:
             os.chmod(creds_file, 0o600)
             
             # Mount command
-            mount_options = drive.mount_options or 'uid=1000,gid=1000,iocharset=utf8'
+            mount_options = drive.mount_options or 'uid=1000,gid=1000,iocharset=utf8,file_mode=0777,dir_mode=0777'
             cmd = [
                 'sudo', 'mount', '-t', 'cifs',
                 drive.server_path, drive.mount_point,
                 '-o', f"credentials={creds_file},{mount_options}"
             ]
             
+            log_system_message('info', f"Executing mount command: {' '.join(cmd[:-2])} -o [credentials]", 'network_drives')
+            
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             # Clean up credentials file
-            os.remove(creds_file)
+            if creds_file and os.path.exists(creds_file):
+                os.remove(creds_file)
+                creds_file = None
             
             if result.returncode == 0:
                 drive.is_mounted = True
                 drive.last_mount_check = datetime.utcnow()
                 db.session.commit()
-                log_system_message('info', f"Successfully mounted CIFS drive {drive.name}")
+                log_system_message('info', f"Successfully mounted CIFS drive {drive.name}", 'network_drives')
                 return True
             else:
-                raise Exception(f"CIFS mount failed: {result.stderr}")
+                error_output = result.stderr.strip() or result.stdout.strip()
+                raise Exception(f"CIFS mount failed (exit code {result.returncode}): {error_output}")
                 
         except Exception as e:
             # Clean up credentials file if it exists
-            creds_file = f"/tmp/cifs_creds_{drive.id}"
-            if os.path.exists(creds_file):
+            if creds_file and os.path.exists(creds_file):
                 os.remove(creds_file)
             raise e
     
     def _mount_nfs(self, drive):
         """Mount an NFS drive"""
         try:
+            log_system_message('info', f"Starting NFS mount for drive {drive.name} to {drive.mount_point}", 'network_drives')
+            
+            # Check if NFS utilities are available
+            nfs_check = subprocess.run(['which', 'mount.nfs'], capture_output=True, text=True)
+            if nfs_check.returncode != 0:
+                nfs_check = subprocess.run(['which', 'mount.nfs4'], capture_output=True, text=True)
+                if nfs_check.returncode != 0:
+                    raise Exception("NFS mount utilities not found. Install nfs-common package: sudo apt install nfs-common")
+            
             # Mount command
-            mount_options = drive.mount_options or 'nfsvers=4'
+            mount_options = drive.mount_options or 'defaults'
             cmd = [
                 'sudo', 'mount', '-t', 'nfs',
                 drive.server_path, drive.mount_point,
                 '-o', mount_options
             ]
+            
+            log_system_message('info', f"Executing NFS mount command: {' '.join(cmd)}", 'network_drives')
             
             result = subprocess.run(cmd, capture_output=True, text=True)
             
@@ -138,10 +165,11 @@ class NetworkDriveManager:
                 drive.is_mounted = True
                 drive.last_mount_check = datetime.utcnow()
                 db.session.commit()
-                log_system_message('info', f"Successfully mounted NFS drive {drive.name}")
+                log_system_message('info', f"Successfully mounted NFS drive {drive.name}", 'network_drives')
                 return True
             else:
-                raise Exception(f"NFS mount failed: {result.stderr}")
+                error_output = result.stderr.strip() or result.stdout.strip()
+                raise Exception(f"NFS mount failed (exit code {result.returncode}): {error_output}")
                 
         except Exception as e:
             raise e
@@ -250,6 +278,84 @@ class NetworkDriveManager:
     
     def test_connection(self, drive_id):
         """Test connection to a network drive"""
+        try:
+            drive = NetworkDrive.query.get(drive_id)
+            if not drive:
+                return {'success': False, 'message': 'Drive not found'}
+            
+            log_system_message('info', f"Testing connection to drive {drive.name}", 'network_drives')
+            
+            if drive.drive_type == 'cifs':
+                return self._test_cifs_connection(drive)
+            elif drive.drive_type == 'nfs':
+                return self._test_nfs_connection(drive)
+            else:
+                return {'success': False, 'message': f'Unsupported drive type: {drive.drive_type}'}
+                
+        except Exception as e:
+            error_msg = str(e)
+            log_system_message('error', f"Connection test failed for drive: {error_msg}", 'network_drives')
+            return {'success': False, 'message': error_msg}
+    
+    def _test_cifs_connection(self, drive):
+        """Test CIFS connection"""
+        try:
+            # Check if mount.cifs is available
+            cifs_check = subprocess.run(['which', 'mount.cifs'], capture_output=True, text=True)
+            if cifs_check.returncode != 0:
+                return {'success': False, 'message': 'mount.cifs utility not found. Install with: sudo apt install cifs-utils'}
+            
+            # Try to list shares or ping the server
+            if drive.server_path.startswith('//'):
+                server = drive.server_path.split('/')[2]
+                # Test server connectivity
+                ping_result = subprocess.run(['ping', '-c', '1', '-W', '3', server], capture_output=True, text=True)
+                if ping_result.returncode != 0:
+                    return {'success': False, 'message': f'Cannot reach server {server}. Check network connectivity.'}
+                
+                return {'success': True, 'message': f'Server {server} is reachable. Mount configuration appears valid.'}
+            else:
+                return {'success': False, 'message': 'Invalid CIFS server path. Use format: //server/share'}
+                
+        except Exception as e:
+            return {'success': False, 'message': f'CIFS test failed: {str(e)}'}
+    
+    def _test_nfs_connection(self, drive):
+        """Test NFS connection"""
+        try:
+            # Check if NFS utilities are available
+            nfs_check = subprocess.run(['which', 'showmount'], capture_output=True, text=True)
+            if nfs_check.returncode != 0:
+                return {'success': False, 'message': 'NFS utilities not found. Install with: sudo apt install nfs-common'}
+            
+            # Extract server from server_path
+            if ':' in drive.server_path:
+                server = drive.server_path.split(':')[0]
+                export_path = drive.server_path.split(':', 1)[1]
+                
+                # Test server connectivity
+                ping_result = subprocess.run(['ping', '-c', '1', '-W', '3', server], capture_output=True, text=True)
+                if ping_result.returncode != 0:
+                    return {'success': False, 'message': f'Cannot reach NFS server {server}. Check network connectivity.'}
+                
+                # Try to list exports
+                showmount_result = subprocess.run(['showmount', '-e', server], capture_output=True, text=True)
+                if showmount_result.returncode == 0:
+                    exports = showmount_result.stdout
+                    if export_path in exports:
+                        return {'success': True, 'message': f'NFS export {export_path} found on server {server}'}
+                    else:
+                        return {'success': False, 'message': f'Export {export_path} not found on server {server}. Available exports:\n{exports}'}
+                else:
+                    return {'success': False, 'message': f'Cannot list exports from {server}: {showmount_result.stderr}'}
+            else:
+                return {'success': False, 'message': 'Invalid NFS server path. Use format: server:/export/path'}
+                
+        except Exception as e:
+            return {'success': False, 'message': f'NFS test failed: {str(e)}'}
+    
+    def _original_test_connection(self, drive_id):
+        """Original test connection method"""
         try:
             success = self.mount_drive(drive_id)
             if success:
