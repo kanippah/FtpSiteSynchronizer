@@ -121,7 +121,7 @@ class FTPClient:
                                         'name': name,
                                         'size': facts.get('size', 0),
                                         'modify': facts.get('modify', ''),
-                                        'type': facts.get('type', 'file')
+                                        'type': 'directory' if facts.get('type') == 'dir' else 'file'
                                     })
                                     break
                         except:
@@ -145,7 +145,7 @@ class FTPClient:
                             'name': file_attr.filename,
                             'size': file_attr.st_size or 0,
                             'modify': datetime.fromtimestamp(file_attr.st_mtime).isoformat() if file_attr.st_mtime else '',
-                            'type': 'dir' if stat.S_ISDIR(file_attr.st_mode) else 'file'
+                            'type': 'directory' if stat.S_ISDIR(file_attr.st_mode) else 'file'
                         })
                         
                 except Exception as e:
@@ -291,9 +291,61 @@ class FTPClient:
             return {'success': False, 'error': str(e)}
     
     def download_folder(self, remote_path, local_path):
-        """Download entire folder structure"""
+        """Download entire folder structure recursively"""
         try:
-            return self.download_files(remote_path, local_path)
+            files_processed = 0
+            bytes_transferred = 0
+            log_messages = []
+            
+            def download_recursive(remote_dir, local_dir):
+                """Recursively download all files and folders"""
+                nonlocal files_processed, bytes_transferred
+                
+                files_list = self.list_files(remote_dir)
+                if not files_list['success']:
+                    return files_list
+                
+                # Create local directory
+                os.makedirs(local_dir, exist_ok=True)
+                
+                for file_info in files_list['files']:
+                    if file_info['type'] == 'file':
+                        # Download file
+                        remote_file_path = os.path.join(remote_dir, file_info['name']).replace('\\', '/')
+                        local_file_path = os.path.join(local_dir, file_info['name'])
+                        
+                        result = self.download_file(remote_file_path, local_file_path)
+                        
+                        if result['success']:
+                            files_processed += 1
+                            bytes_transferred += result['bytes_transferred']
+                            log_messages.append(f"Downloaded: {os.path.relpath(local_file_path, local_path)}")
+                        else:
+                            log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
+                    
+                    elif file_info['type'] == 'directory':
+                        # Recursively download subdirectory
+                        subdir_remote = os.path.join(remote_dir, file_info['name']).replace('\\', '/')
+                        subdir_local = os.path.join(local_dir, file_info['name'])
+                        
+                        log_messages.append(f"Entering directory: {os.path.relpath(subdir_local, local_path)}")
+                        download_recursive(subdir_remote, subdir_local)
+                
+                return {'success': True}
+            
+            # Start recursive download
+            result = download_recursive(remote_path, local_path)
+            
+            if result['success']:
+                return {
+                    'success': True,
+                    'files_processed': files_processed,
+                    'bytes_transferred': bytes_transferred,
+                    'log': log_messages
+                }
+            else:
+                return result
+                
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
@@ -384,16 +436,22 @@ class FTPClient:
                 if not enable_duplicate_renaming:
                     return file_path
                 
-                if file_path not in processed_files:
+                # Check if file already exists on disk
+                if not os.path.exists(file_path):
                     processed_files.add(file_path)
                     return file_path
                 
                 # Generate numbered variants
-                base_name, ext = os.path.splitext(file_path)
+                directory = os.path.dirname(file_path)
+                filename = os.path.basename(file_path)
+                base_name, ext = os.path.splitext(filename)
                 counter = 1
+                
                 while True:
-                    new_path = f"{base_name}_{counter}{ext}"
-                    if new_path not in processed_files:
+                    new_filename = f"{base_name}_{counter}{ext}"
+                    new_path = os.path.join(directory, new_filename)
+                    
+                    if not os.path.exists(new_path) and new_path not in processed_files:
                         processed_files.add(new_path)
                         return new_path
                     counter += 1
@@ -434,8 +492,11 @@ class FTPClient:
                         # Handle file downloads
                         remote_file_path = os.path.join(remote_dir, file_info['name']).replace('\\', '/')
                         
-                        # Apply date folder if enabled
-                        target_local_dir = get_date_folder_path(local_dir)
+                        # Apply date folder if enabled (only at the root level to avoid nested date folders)
+                        if remote_dir == remote_path:  # Only apply date folders at root level
+                            target_local_dir = get_date_folder_path(local_dir)
+                        else:
+                            target_local_dir = local_dir
                         
                         # Create target directory
                         os.makedirs(target_local_dir, exist_ok=True)
@@ -444,25 +505,35 @@ class FTPClient:
                         local_file_path = os.path.join(target_local_dir, file_info['name'])
                         local_file_path = get_unique_filename(local_file_path)
                         
-                        result = self.download_file(remote_file_path, local_file_path)
-                        
-                        if result['success']:
-                            files_processed += 1
-                            bytes_transferred += result['bytes_transferred']
-                            log_messages.append(f"Downloaded: {file_info['name']} -> {os.path.relpath(local_file_path, local_path)}")
-                        else:
-                            log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
+                        try:
+                            result = self.download_file(remote_file_path, local_file_path)
+                            
+                            if result['success']:
+                                files_processed += 1
+                                bytes_transferred += result['bytes_transferred']
+                                log_messages.append(f"Downloaded: {file_info['name']} -> {os.path.relpath(local_file_path, local_path)}")
+                            else:
+                                log_messages.append(f"Failed to download: {file_info['name']} - {result['error']}")
+                        except Exception as e:
+                            log_messages.append(f"Error downloading {file_info['name']}: {str(e)}")
                     
-                    elif file_info['type'] == 'directory' and enable_recursive:
-                        # Recursively download from subdirectories (flattened structure)
+                    elif file_info['type'] == 'directory' and is_recursive:
+                        # Recursively download from subdirectories (preserve structure)
                         subdir_remote = os.path.join(remote_dir, file_info['name']).replace('\\', '/')
-                        # Note: For flattened structure, we use the same local directory
-                        download_from_directory(subdir_remote, local_dir, True)
+                        
+                        # Preserve original folder structure
+                        subdir_local = os.path.join(local_dir, file_info['name'])
+                        os.makedirs(subdir_local, exist_ok=True)
+                        
+                        log_messages.append(f"Entering directory: {file_info['name']}")
+                        subdir_result = download_from_directory(subdir_remote, subdir_local, True)
+                        if not subdir_result['success']:
+                            log_messages.append(f"Warning: Failed to download directory {file_info['name']}: {subdir_result.get('error', 'Unknown error')}")
                 
                 return {'success': True}
             
-            # Start the download process
-            result = download_from_directory(remote_path, local_path)
+            # Start the download process with proper recursive flag
+            result = download_from_directory(remote_path, local_path, enable_recursive)
             
             if result['success']:
                 return {

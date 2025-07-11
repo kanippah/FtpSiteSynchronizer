@@ -161,7 +161,7 @@ class NFSClient:
                     'name': item,
                     'size': stat_info.st_size if os.path.isfile(item_path) else 0,
                     'modify': datetime.fromtimestamp(stat_info.st_mtime).isoformat(),
-                    'type': 'file' if os.path.isfile(item_path) else 'dir'
+                    'type': 'file' if os.path.isfile(item_path) else 'directory'
                 })
             
             return {'success': True, 'files': files}
