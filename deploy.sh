@@ -71,14 +71,17 @@ fi
 
 print_status "Starting FTP/SFTP/NFS Manager deployment on Ubuntu 24.04"
 
-# Get GitHub repository URL
-if [ -z "$GITHUB_REPO" ]; then
-    echo -n "Enter GitHub repository URL: "
-    read GITHUB_REPO
+# Check if we're running from the application directory
+if [ -f "main.py" ] && [ -f "models.py" ]; then
+    print_status "Running from application directory - using local files"
+    APP_SOURCE="local"
+else
+    # Get GitHub repository URL
     if [ -z "$GITHUB_REPO" ]; then
-        print_error "GitHub repository URL is required"
-        exit 1
+        echo -n "Enter GitHub repository URL (or press Enter to use local files): "
+        read GITHUB_REPO
     fi
+    APP_SOURCE="git"
 fi
 
 # Generate secure passwords and keys
@@ -137,7 +140,9 @@ apt install -y \
     openssh-client \
     rsync \
     traceroute \
-    dnsutils
+    dnsutils \
+    vim \
+    nano
 
 print_success "System dependencies installed"
 
@@ -290,8 +295,15 @@ print_status "Setting up application directory..."
 sudo -u $APP_USER mkdir -p $APP_DIR
 cd $APP_DIR
 
-print_status "Setting up repository..."
-if [ -d ".git" ]; then
+print_status "Setting up application files..."
+if [ "$APP_SOURCE" = "local" ]; then
+    # Copy local files to application directory
+    print_status "Copying local application files..."
+    cp -r ./* $APP_DIR/ 2>/dev/null || true
+    cp -r ./.* $APP_DIR/ 2>/dev/null || true
+    chown -R $APP_USER:$APP_USER $APP_DIR
+    print_success "Local files copied to $APP_DIR"
+elif [ -d ".git" ]; then
     print_warning "Repository already exists, pulling latest changes..."
     sudo -u $APP_USER git pull origin main 2>/dev/null || sudo -u $APP_USER git pull origin master 2>/dev/null || print_warning "Could not pull latest changes"
 elif [ -n "$GITHUB_REPO" ] && [ "$GITHUB_REPO" != "" ]; then
@@ -302,8 +314,26 @@ else
 fi
 
 # Create required directories
-sudo -u $APP_USER mkdir -p logs downloads static/uploads
-sudo -u $APP_USER chmod 755 logs downloads static/uploads
+sudo -u $APP_USER mkdir -p logs downloads static/uploads templates
+sudo -u $APP_USER chmod 755 logs downloads static/uploads templates
+
+# Ensure all application files are present
+print_status "Verifying application files..."
+REQUIRED_FILES=("main.py" "models.py" "routes.py" "app.py" "ftp_client.py")
+MISSING_FILES=()
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$APP_DIR/$file" ]; then
+        MISSING_FILES+=("$file")
+    fi
+done
+
+if [ ${#MISSING_FILES[@]} -eq 0 ]; then
+    print_success "All required application files are present"
+else
+    print_warning "Missing application files: ${MISSING_FILES[*]}"
+    print_warning "Application may not function correctly"
+fi
 
 # Create mount point directory for network drives
 mkdir -p /mnt
@@ -881,6 +911,16 @@ command -v mount.cifs > /dev/null && echo "  ✓ CIFS mount: Available" || echo 
 command -v showmount > /dev/null && echo "  ✓ NFS showmount: Available" || echo "  ✗ NFS showmount: Not found"
 command -v smbclient > /dev/null && echo "  ✓ SMB client: Available" || echo "  ✗ SMB client: Not found"
 
+# Test application health
+print_status "Testing application health..."
+sleep 10
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/ | grep -q "200\|302\|404"; then
+    echo "  ✓ Application is responding"
+else
+    echo "  ✗ Application may not be responding correctly"
+    echo "  Check logs: tail -f $APP_DIR/logs/gunicorn.log"
+fi
+
 echo ""
 echo "Network Drive Testing Commands:"
 echo "  # Test NFS mount"
@@ -901,4 +941,14 @@ print_warning "Browser will show SSL warning due to self-signed certificate"
 print_warning "For NFS operations, ensure target servers have proper export configurations"
 echo ""
 print_success "Access your FTP/SFTP/NFS Manager at: https://$DOMAIN"
+
+echo ""
+echo "Post-Deployment Steps:"
+echo "1. Run verification script: ./deploy_check.sh"
+echo "2. Configure your first network drive in the web interface"
+echo "3. Set up SMTP notifications in Settings"
+echo "4. Create your first FTP/SFTP/NFS sites"
+echo "5. Test network mounting with your servers"
+echo ""
+print_success "🎉 Deployment completed successfully!"
 echo ""
