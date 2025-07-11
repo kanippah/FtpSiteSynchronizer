@@ -142,6 +142,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Nested Folder Structure Implementation
+- **Job Folder Names**: Added `job_folder_name` column to jobs table for individual job organization within groups
+- **Three-Level Hierarchy**: Implemented YYYY-MM/group_folder_name/job_folder_name/ folder structure
+- **Enhanced Organization**: Jobs can now create specific subfolders within their assigned groups
+- **Form Updates**: Added job folder name field to job creation/editing forms with helpful descriptions
+- **FTP Client Integration**: Updated download_files_enhanced to support nested job folder organization
+- **Advanced Features**: All job-level features (recursive download, duplicate renaming, date folders) work with nested structure
+
 ### July 2025 - Job Groups & Network Drive Enhancement
 - **Job Group Architecture**: Implemented job grouping with date-based folder organization (YYYY-MM/GroupName/)
 - **Network Drive Support**: Added Ubuntu 24.04 CIFS/NFS network drive mounting and management
