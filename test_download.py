@@ -1,78 +1,80 @@
 #!/usr/bin/env python3
 """
-Quick test download script to verify FTP functionality
+Test what's actually available on the FTP server vs what we downloaded
 """
-
 import ftplib
 import os
-import time
 
-def test_download():
-    """Test FTP download with proper error handling"""
+def compare_ftp_vs_local():
+    print("=== FTP Server vs Local Downloads Comparison ===")
+    
+    # Check local downloads
+    print("\n🏠 LOCAL DOWNLOADS:")
+    for root, dirs, files in os.walk("downloads/"):
+        level = root.replace("downloads/", "").count(os.sep)
+        indent = "  " * level
+        print(f"{indent}📁 {os.path.basename(root)}/")
+        subindent = "  " * (level + 1)
+        for file in files[:5]:  # Show first 5 files
+            print(f"{subindent}📄 {file}")
+        if len(files) > 5:
+            print(f"{subindent}... and {len(files)-5} more files")
+    
+    # Check FTP server structure
+    print("\n🌐 FTP SERVER STRUCTURE:")
     try:
-        # Create target folder
-        target_folder = './downloads/2025-07/Job-Folder-Name'
-        os.makedirs(target_folder, exist_ok=True)
-        
-        print("Connecting to FTP server...")
         ftp = ftplib.FTP()
-        ftp.connect('ftp.dlptest.com', 21, timeout=60)
+        ftp.connect('ftp.dlptest.com', 21, timeout=15)
         ftp.login('dlpuser', 'rNrKYTX9g7z3RgJRmxWuGHbeu')
-        ftp.set_pasv(True)
+        ftp.set_pasv(False)
         
-        print("Getting file list...")
-        files = ftp.nlst()
-        print(f"Found {len(files)} files")
-        
-        files_downloaded = 0
-        bytes_downloaded = 0
-        
-        # Download first 3 files
-        for filename in files[:3]:
-            if filename not in ['.', '..'] and not filename.startswith('.'):
-                local_path = os.path.join(target_folder, filename)
+        def list_ftp_dir(path=".", level=0):
+            try:
+                ftp.cwd(path)
+                lines = []
+                ftp.retrlines('LIST', lines.append)
                 
-                try:
-                    print(f"Downloading {filename}...")
-                    with open(local_path, 'wb') as f:
-                        ftp.retrbinary(f'RETR {filename}', f.write)
-                    
-                    file_size = os.path.getsize(local_path)
-                    if file_size > 0:
-                        files_downloaded += 1
-                        bytes_downloaded += file_size
-                        print(f"  SUCCESS: {filename} ({file_size} bytes)")
-                    else:
-                        print(f"  FAILED: {filename} (0 bytes)")
-                        os.remove(local_path)
+                indent = "  " * level
+                print(f"{indent}📁 {path}")
+                
+                dirs = []
+                files = []
+                
+                for line in lines:
+                    parts = line.split()
+                    if len(parts) >= 9:
+                        permissions = parts[0]
+                        filename = ' '.join(parts[8:])
                         
-                except Exception as e:
-                    print(f"  ERROR: {filename} - {str(e)}")
-                    if os.path.exists(local_path):
-                        os.remove(local_path)
+                        if filename not in ['.', '..']:
+                            if permissions.startswith('d'):
+                                dirs.append(filename)
+                            else:
+                                files.append(filename)
                 
-                # Small delay between downloads
-                time.sleep(1)
+                subindent = "  " * (level + 1)
+                for file in files[:3]:
+                    print(f"{subindent}📄 {file}")
+                if len(files) > 3:
+                    print(f"{subindent}... and {len(files)-3} more files")
+                
+                # Recurse into directories (limit depth)
+                if level < 2:
+                    for dirname in dirs:
+                        try:
+                            list_ftp_dir(f"{path}/{dirname}" if path != "." else dirname, level + 1)
+                            ftp.cwd(path)
+                        except Exception as e:
+                            print(f"{subindent}❌ Error accessing {dirname}: {e}")
+                            
+            except Exception as e:
+                print(f"❌ Error listing {path}: {e}")
         
+        list_ftp_dir(".")
         ftp.quit()
         
-        print(f"\nDownload Summary:")
-        print(f"Files downloaded: {files_downloaded}")
-        print(f"Bytes downloaded: {bytes_downloaded}")
-        
-        return {
-            'success': True,
-            'files_processed': files_downloaded,
-            'bytes_transferred': bytes_downloaded
-        }
-        
     except Exception as e:
-        print(f"Download failed: {str(e)}")
-        return {
-            'success': False,
-            'error': str(e)
-        }
+        print(f"❌ FTP connection failed: {e}")
 
 if __name__ == "__main__":
-    result = test_download()
-    print(f"\nResult: {result}")
+    compare_ftp_vs_local()
