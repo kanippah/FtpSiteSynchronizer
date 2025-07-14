@@ -31,8 +31,61 @@ class NetworkDriveManager:
                 db.session.commit()
                 return True
             
-            # Create mount point if it doesn't exist
-            os.makedirs(drive.mount_point, exist_ok=True)
+            # Create mount point directory with proper permissions using sudo
+            log_system_message('info', f"Creating mount point directory: {drive.mount_point}", 'network_drives')
+            try:
+                # First try creating with regular permissions
+                os.makedirs(drive.mount_point, exist_ok=True)
+                
+                # Set proper ownership and permissions
+                import pwd
+                current_user = pwd.getpwuid(os.getuid())
+                uid = current_user.pw_uid
+                gid = current_user.pw_gid
+                
+                # Try to set ownership with sudo if needed
+                try:
+                    os.chown(drive.mount_point, uid, gid)
+                    os.chmod(drive.mount_point, 0o755)
+                    log_system_message('info', f"Set mount point permissions: uid={uid}, gid={gid}", 'network_drives')
+                except PermissionError:
+                    # If chown fails, try with sudo
+                    sudo_chown_cmd = ['sudo', 'chown', f'{uid}:{gid}', drive.mount_point]
+                    sudo_chmod_cmd = ['sudo', 'chmod', '755', drive.mount_point]
+                    
+                    chown_result = subprocess.run(sudo_chown_cmd, capture_output=True, text=True)
+                    chmod_result = subprocess.run(sudo_chmod_cmd, capture_output=True, text=True)
+                    
+                    if chown_result.returncode == 0 and chmod_result.returncode == 0:
+                        log_system_message('info', f"Set mount point permissions with sudo: uid={uid}, gid={gid}", 'network_drives')
+                    else:
+                        log_system_message('warning', f"Could not set mount point permissions: {chown_result.stderr}", 'network_drives')
+                        
+            except Exception as e:
+                # If regular mkdir fails, try with sudo
+                log_system_message('info', f"Creating mount point with sudo: {drive.mount_point}", 'network_drives')
+                sudo_mkdir_cmd = ['sudo', 'mkdir', '-p', drive.mount_point]
+                mkdir_result = subprocess.run(sudo_mkdir_cmd, capture_output=True, text=True)
+                
+                if mkdir_result.returncode != 0:
+                    raise Exception(f"Failed to create mount point directory: {mkdir_result.stderr}")
+                
+                # Set proper ownership
+                import pwd
+                current_user = pwd.getpwuid(os.getuid())
+                uid = current_user.pw_uid
+                gid = current_user.pw_gid
+                
+                sudo_chown_cmd = ['sudo', 'chown', f'{uid}:{gid}', drive.mount_point]
+                sudo_chmod_cmd = ['sudo', 'chmod', '755', drive.mount_point]
+                
+                chown_result = subprocess.run(sudo_chown_cmd, capture_output=True, text=True)
+                chmod_result = subprocess.run(sudo_chmod_cmd, capture_output=True, text=True)
+                
+                if chown_result.returncode == 0 and chmod_result.returncode == 0:
+                    log_system_message('info', f"Created mount point with sudo and set permissions: uid={uid}, gid={gid}", 'network_drives')
+                else:
+                    log_system_message('warning', f"Mount point created but could not set permissions: {chown_result.stderr}", 'network_drives')
             
             # Check if mounting is possible in this environment
             if not self._check_mount_capabilities():

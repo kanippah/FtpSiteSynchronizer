@@ -178,6 +178,14 @@ mkdir -p /mnt/cifs
 mkdir -p /mnt/nfs
 chmod 755 /mnt/network_drives /mnt/cifs /mnt/nfs
 
+# Ensure proper ownership for mount points
+if id "$APP_USER" &>/dev/null; then
+    chown -R $APP_USER:$APP_USER /mnt/network_drives /mnt/cifs /mnt/nfs
+    print_success "Network drive mount points created with proper ownership"
+else
+    print_warning "App user not yet created - will set ownership later"
+fi
+
 # Configure sudo permissions for network mounting
 print_status "Configuring sudo permissions for network mounting..."
 cat > /etc/sudoers.d/ftpmanager-mount << EOF
@@ -253,9 +261,16 @@ $APP_USER ALL=(ALL) NOPASSWD: /sbin/mount.cifs
 $APP_USER ALL=(ALL) NOPASSWD: /usr/sbin/mount.cifs
 $APP_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /mnt/*
 $APP_USER ALL=(ALL) NOPASSWD: /bin/rmdir /mnt/*
+$APP_USER ALL=(ALL) NOPASSWD: /bin/chown * /mnt/*
+$APP_USER ALL=(ALL) NOPASSWD: /bin/chmod * /mnt/*
 EOF
 
 chmod 440 /etc/sudoers.d/ftpmanager-nfs
+
+# Fix mount point ownership now that user exists
+print_status "Setting mount point ownership for network drives..."
+chown -R $APP_USER:$APP_USER /mnt/network_drives /mnt/cifs /mnt/nfs 2>/dev/null || true
+print_success "Mount point ownership configured for $APP_USER"
 
 # Test sudo configuration
 print_status "Testing network drive sudo configuration..."
