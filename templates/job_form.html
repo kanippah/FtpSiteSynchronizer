@@ -338,6 +338,59 @@
                         </div>
                     </div>
                     
+                    <!-- Upload Job Options -->
+                    <div class="card mt-4" id="upload_options_card" style="display: none;">
+                        <div class="card-body">
+                            <h6 class="mb-3">Upload Job Options</h6>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="use_local_folders" name="use_local_folders" {{ 'checked' if job and job.use_local_folders else '' }}>
+                                <label class="form-check-label" for="use_local_folders">
+                                    <strong>Upload from Local Folders</strong>
+                                </label>
+                                <div class="form-text">Upload files from existing local folders instead of downloading first (perfect for monthly folder automation)</div>
+                            </div>
+                            
+                            <div class="mb-3" id="upload_date_format_field" style="display: none;">
+                                <label for="upload_date_folder_format" class="form-label">Monthly Folder Format</label>
+                                <select class="form-select" id="upload_date_folder_format" name="upload_date_folder_format">
+                                    <option value="YYYY-MM" {{ 'selected' if job and job.upload_date_folder_format == 'YYYY-MM' else 'selected' }}>2025-01</option>
+                                    <option value="YYYY-MM-DD" {{ 'selected' if job and job.upload_date_folder_format == 'YYYY-MM-DD' else '' }}>2025-01-15</option>
+                                    <option value="YYYYMM" {{ 'selected' if job and job.upload_date_folder_format == 'YYYYMM' else '' }}>202501</option>
+                                </select>
+                                <div class="form-text">Choose the format for automatic monthly folder detection</div>
+                            </div>
+                            
+                            <script>
+                                // Toggle upload date format field
+                                document.getElementById('use_local_folders').addEventListener('change', function() {
+                                    const uploadDateField = document.getElementById('upload_date_format_field');
+                                    if (this.checked) {
+                                        uploadDateField.style.display = 'block';
+                                    } else {
+                                        uploadDateField.style.display = 'none';
+                                    }
+                                });
+                                
+                                // Initialize on page load
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const useLocalFolders = document.getElementById('use_local_folders');
+                                    if (useLocalFolders && useLocalFolders.checked) {
+                                        document.getElementById('upload_date_format_field').style.display = 'block';
+                                    }
+                                });
+                            </script>
+                            
+                            <div class="alert alert-info">
+                                <small>
+                                    <strong>How it works:</strong> When enabled, the system will automatically look for monthly folders in your local path (e.g., downloads/2025-01/) and upload files from there directly to the target site.
+                                    <br><br>
+                                    <strong>Perfect for:</strong> Download Job → Monthly Folder → Upload Job automation workflow
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Form Actions -->
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ url_for('jobs') }}" class="btn btn-secondary">Cancel</a>

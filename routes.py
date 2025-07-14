@@ -316,6 +316,16 @@ def new_job():
             # For upload jobs
             if job_type == 'upload' and request.form.get('target_site_id'):
                 job.target_site_id = int(request.form['target_site_id'])
+                # Handle upload job options
+                job.use_local_folders = bool(request.form.get('use_local_folders'))
+                job.upload_date_folder_format = request.form.get('upload_date_folder_format', 'YYYY-MM')
+            else:
+                job.use_local_folders = False
+                job.upload_date_folder_format = 'YYYY-MM'
+            
+            # Fix None folder issue - set default job folder name if job is assigned to group
+            if job.job_group_id and not job.job_folder_name:
+                job.job_folder_name = job.name.replace(' ', '-')
             
             db.session.add(job)
             db.session.commit()
@@ -456,6 +466,10 @@ def edit_job(job_id):
             else:
                 job.job_folder_name = None
             
+            # Fix None folder issue - set default job folder name if job is assigned to group
+            if job.job_group_id and not job.job_folder_name:
+                job.job_folder_name = job.name.replace(' ', '-')
+            
             # Handle filename date filter
             job.use_filename_date_filter = bool(request.form.get('use_filename_date_filter'))
             if job.use_filename_date_filter:
@@ -466,8 +480,13 @@ def edit_job(job_id):
             # For upload jobs
             if job_type == 'upload' and request.form.get('target_site_id'):
                 job.target_site_id = int(request.form['target_site_id'])
+                # Handle upload job options
+                job.use_local_folders = bool(request.form.get('use_local_folders'))
+                job.upload_date_folder_format = request.form.get('upload_date_folder_format', 'YYYY-MM')
             else:
                 job.target_site_id = None
+                job.use_local_folders = False
+                job.upload_date_folder_format = 'YYYY-MM'
             
             job.updated_at = datetime.utcnow()
             db.session.commit()

@@ -546,6 +546,17 @@ try:
             else:
                 print('Job group folder name is already optional')
                 
+            # Migration 9: Add automatic monthly upload feature columns
+            cursor.execute(\\\"SELECT column_name FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'use_local_folders'\\\")
+            
+            if not cursor.fetchone():
+                print('Adding automatic monthly upload feature columns...')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN use_local_folders BOOLEAN DEFAULT FALSE;')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN upload_date_folder_format VARCHAR(20) DEFAULT ''YYYY-MM'';')
+                print('Automatic monthly upload feature columns added successfully - enables upload from existing local folders')
+            else:
+                print('Automatic monthly upload feature columns already exist')
+                
             conn.commit()
             cursor.close()
             conn.close()

@@ -264,6 +264,7 @@ function initializeScheduleHandlers() {
 function initializeJobTypeHandlers() {
     const jobType = document.getElementById('job_type');
     const uploadFields = document.getElementById('upload_fields');
+    const uploadOptionsCard = document.getElementById('upload_options_card');
     const downloadAllField = document.getElementById('download_all_field');
     const useDateRange = document.getElementById('use_date_range');
     
@@ -271,6 +272,11 @@ function initializeJobTypeHandlers() {
         jobType.addEventListener('change', function() {
             if (uploadFields) {
                 uploadFields.style.display = this.value === 'upload' ? 'block' : 'none';
+            }
+            
+            // Show/hide upload options card
+            if (uploadOptionsCard) {
+                uploadOptionsCard.style.display = this.value === 'upload' ? 'block' : 'none';
             }
             
             // Show download all field only for download jobs and when date range is not enabled

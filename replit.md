@@ -142,6 +142,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Automatic Monthly Folder Upload Feature Implemented ✅
+- **Feature Complete**: Successfully implemented automatic monthly folder upload functionality that allows upload jobs to use existing local folders instead of downloading first
+- **Database Enhancement**: Added use_local_folders and upload_date_folder_format columns to jobs table with proper migration support
+- **Upload Job Logic**: Created execute_local_folder_upload function to handle direct uploads from monthly folders (e.g., downloads/2025-07/)
+- **Monthly Folder Detection**: Implemented get_monthly_folder_path function with support for YYYY-MM, YYYY-MM-DD, and YYYYMM formats
+- **User Interface**: Added Upload Job Options card with local folder upload checkbox and monthly folder format selection
+- **JavaScript Integration**: Enhanced job form to show/hide upload options based on job type selection
+- **None Folder Fix**: Resolved issue where jobs assigned to groups without explicit folder names created "None" folders - now auto-generates job folder names based on job name
+- **Perfect Automation**: Enables complete Download Job → Monthly Folder → Upload Job workflow without manual intervention
+- **Group Integration**: Works seamlessly with job groups for organized folder structure (YYYY-MM/group_folder_name/job_folder_name/)
+- **Deploy Script**: Updated deploy.sh with automatic migration for new upload feature columns
+
 ### July 2025 - Preserve Folder Structure Feature Successfully Implemented ✅
 - **Feature Fully Working**: Successfully implemented "Preserve Folder Structure" option that maintains original directory hierarchy during transfers
 - **Real-World Validation**: Feature tested and working with actual FTP server downloads - correctly organizing files in proper folder structure

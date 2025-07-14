@@ -60,6 +60,10 @@ class Job(db.Model):
     use_date_folders = db.Column(db.Boolean, default=False)  # Create date-based folders for downloads
     date_folder_format = db.Column(db.String(20), default='YYYY-MM-DD')  # Date format for folder creation
     
+    # Upload job options for automatic monthly folder uploads
+    use_local_folders = db.Column(db.Boolean, default=False)  # Upload from existing local folders instead of downloading first
+    upload_date_folder_format = db.Column(db.String(20), default='YYYY-MM')  # Date format for monthly upload folders
+    
     # Job grouping for organized execution
     job_group_id = db.Column(db.Integer, db.ForeignKey('job_groups.id'), nullable=True)  # Optional group assignment
     job_folder_name = db.Column(db.String(100), nullable=True)  # Custom folder name within group folder

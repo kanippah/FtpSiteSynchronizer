@@ -360,7 +360,6 @@ def execute_upload_job(job, job_log):
                 'error': 'No target site specified for upload job'
             }
         
-        source_site = job.site
         target_site = Site.query.get(job.target_site_id)
         
         if not target_site:
@@ -368,6 +367,13 @@ def execute_upload_job(job, job_log):
                 'success': False,
                 'error': 'Target site not found'
             }
+        
+        # Check if using local folders for upload
+        if job.use_local_folders:
+            return execute_local_folder_upload(job, job_log, target_site)
+        
+        # Original upload logic: download from source, then upload to target
+        source_site = job.site
         
         # Get passwords
         source_password = decrypt_password(source_site.password_encrypted)
@@ -460,6 +466,125 @@ def execute_upload_job(job, job_log):
             'success': False,
             'error': str(e)
         }
+
+def execute_local_folder_upload(job, job_log, target_site):
+    """Execute upload from local folders (automatic monthly folders)"""
+    try:
+        # Get target site password
+        target_password = decrypt_password(target_site.password_encrypted)
+        
+        # Build target client parameters with NFS support
+        target_kwargs = {}
+        if target_site.protocol == 'nfs':
+            target_kwargs.update({
+                'nfs_export_path': target_site.nfs_export_path or '/',
+                'nfs_version': target_site.nfs_version or '4',
+                'nfs_mount_options': target_site.nfs_mount_options or '',
+                'nfs_auth_method': target_site.nfs_auth_method or 'sys'
+            })
+        
+        # Create target client
+        target_client = FTPClient(target_site.protocol, target_site.host, target_site.port, target_site.username, target_password, **target_kwargs)
+        
+        # Determine local folder path
+        local_folder = get_monthly_folder_path(job)
+        
+        if not os.path.exists(local_folder):
+            return {
+                'success': False,
+                'error': f'Local folder not found: {local_folder}'
+            }
+        
+        # Check if folder has files
+        file_count = sum(len(files) for _, _, files in os.walk(local_folder))
+        if file_count == 0:
+            return {
+                'success': False,
+                'error': f'No files found in local folder: {local_folder}'
+            }
+        
+        # Upload files from local folder
+        files_processed = 0
+        bytes_transferred = 0
+        log_messages = []
+        
+        log_messages.append(f"Uploading from local folder: {local_folder}")
+        
+        # Upload all files from local folder
+        for root, dirs, files in os.walk(local_folder):
+            for file in files:
+                local_file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(local_file_path, local_folder)
+                remote_file_path = os.path.join(target_site.remote_path, relative_path).replace('\\', '/')
+                
+                upload_result = target_client.upload_file(local_file_path, remote_file_path)
+                
+                if upload_result['success']:
+                    files_processed += 1
+                    bytes_transferred += os.path.getsize(local_file_path)
+                    log_messages.append(f"Uploaded: {relative_path}")
+                else:
+                    log_messages.append(f"Failed to upload: {relative_path} - {upload_result.get('error', 'Unknown error')}")
+        
+        return {
+            'success': True,
+            'files_processed': files_processed,
+            'bytes_transferred': bytes_transferred,
+            'log': '\n'.join(log_messages)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in local folder upload job: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def get_monthly_folder_path(job):
+    """Get the monthly folder path for upload jobs"""
+    from datetime import datetime
+    import os
+    
+    # Get base local path
+    base_path = job.local_path or './downloads'
+    
+    # Get current month in the specified format
+    current_date = datetime.now()
+    date_format = job.upload_date_folder_format or 'YYYY-MM'
+    
+    # Convert format to Python datetime format
+    if date_format == 'YYYY-MM':
+        month_folder = current_date.strftime('%Y-%m')
+    elif date_format == 'YYYY-MM-DD':
+        month_folder = current_date.strftime('%Y-%m-%d')
+    elif date_format == 'YYYYMM':
+        month_folder = current_date.strftime('%Y%m')
+    else:
+        # Default to YYYY-MM
+        month_folder = current_date.strftime('%Y-%m')
+    
+    # Handle job groups and folder organization
+    if job.job_group_id:
+        from job_group_manager import JobGroupManager
+        group_manager = JobGroupManager()
+        return group_manager.get_group_folder_path(
+            job.job_group_id, 
+            base_path, 
+            reference_date=current_date,
+            job_folder_name=job.job_folder_name
+        )
+    else:
+        # Direct monthly folder path
+        return os.path.join(base_path, month_folder)
+
+def fix_none_folder_issue(job):
+    """Fix the 'None' folder issue in job group paths"""
+    if job.job_group_id and not job.job_folder_name:
+        # Set a default job folder name based on job name
+        job.job_folder_name = job.name.replace(' ', '-')
+        db.session.commit()
+        return job.job_folder_name
+    return job.job_folder_name
 
 def reschedule_existing_jobs():
     """Reschedule all existing jobs on application start"""
