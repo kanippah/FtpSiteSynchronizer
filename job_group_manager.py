@@ -195,7 +195,7 @@ class JobGroupManager:
                 folder_path = os.path.join(folder_path, group.group_folder_name)
             
             # Add job folder if provided: base_path/YYYY-MM/group_folder_name/job_folder_name
-            if job_folder_name:
+            if job_folder_name and job_folder_name != 'None' and job_folder_name.strip():
                 folder_path = os.path.join(folder_path, job_folder_name)
             
             return folder_path

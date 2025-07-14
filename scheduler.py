@@ -179,12 +179,20 @@ def execute_download_job(job, job_log):
             # Use group manager to get organized folder path
             group_manager = JobGroupManager()
             base_path = job.local_path or './downloads'
+            
+            # Fix None folder issue by auto-generating job folder name if needed
+            job_folder_name = job.job_folder_name
+            if not job_folder_name or job_folder_name == 'None' or job_folder_name.strip() == '':
+                job_folder_name = job.name.replace(' ', '-').replace('/', '-')
+                job.job_folder_name = job_folder_name
+                db.session.commit()
+            
             local_path = group_manager.get_group_folder_path(
                 job.job_group_id, 
                 base_path, 
-                job_folder_name=job.job_folder_name
+                job_folder_name=job_folder_name
             )
-            group_manager.ensure_group_folder(job.job_group_id, base_path, job_folder_name=job.job_folder_name)
+            group_manager.ensure_group_folder(job.job_group_id, base_path, job_folder_name=job_folder_name)
         else:
             local_path = job.local_path or './downloads'
         
@@ -567,11 +575,19 @@ def get_monthly_folder_path(job):
     if job.job_group_id:
         from job_group_manager import JobGroupManager
         group_manager = JobGroupManager()
+        
+        # Fix None folder issue by auto-generating job folder name if needed
+        job_folder_name = job.job_folder_name
+        if not job_folder_name or job_folder_name == 'None' or job_folder_name.strip() == '':
+            job_folder_name = job.name.replace(' ', '-').replace('/', '-')
+            job.job_folder_name = job_folder_name
+            db.session.commit()
+        
         return group_manager.get_group_folder_path(
             job.job_group_id, 
             base_path, 
             reference_date=current_date,
-            job_folder_name=job.job_folder_name
+            job_folder_name=job_folder_name
         )
     else:
         # Direct monthly folder path
