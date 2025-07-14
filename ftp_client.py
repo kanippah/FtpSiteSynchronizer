@@ -637,14 +637,13 @@ class FTPClient:
                 
                 return os.path.join(base_path, date_folder)
             
-            def download_recursive(remote_dir, local_dir, relative_path=""):
-                """Recursively download files from directory with optional folder structure preservation"""
+            def download_recursive(remote_dir, local_base_dir, current_relative_path=""):
+                """Recursively download files from directory with proper folder structure"""
                 nonlocal files_processed, bytes_transferred
                 
                 try:
+                    # Change to remote directory
                     ftp.cwd(remote_dir)
-                    
-                    # Get detailed listing
                     lines = []
                     ftp.retrlines('LIST', lines.append)
                     
@@ -656,35 +655,31 @@ class FTPClient:
                             
                             if filename not in ['.', '..']:
                                 if permissions.startswith('d'):
-                                    # Directory - process recursively if enabled
-                                    if enable_recursive:
-                                        remote_subdir = f"{remote_dir}/{filename}".replace('//', '/')
-                                        
-                                        # Determine local subdirectory based on folder structure preservation
-                                        if preserve_folder_structure:
-                                            # Preserve folder structure: create subfolder
-                                            new_relative_path = os.path.join(relative_path, filename) if relative_path else filename
-                                            local_subdir = os.path.join(local_dir, new_relative_path)
-                                        else:
-                                            # Flatten structure: use same local directory
-                                            new_relative_path = relative_path
-                                            local_subdir = local_dir
-                                        
-                                        log_messages.append(f"Processing subdirectory: {filename}")
-                                        download_recursive(remote_subdir, local_subdir, new_relative_path)
-                                        
-                                        # Go back to current directory
-                                        ftp.cwd(remote_dir)
+                                    # Directory - recurse into it
+                                    if preserve_folder_structure:
+                                        # Build the new relative path for folder structure
+                                        new_relative_path = os.path.join(current_relative_path, filename) if current_relative_path else filename
+                                    else:
+                                        # Flattened - keep empty relative path
+                                        new_relative_path = ""
+                                    
+                                    # Recursive call
+                                    download_recursive(f"{remote_dir}/{filename}", local_base_dir, new_relative_path)
+                                    
+                                    # Always return to current directory after recursion
+                                    ftp.cwd(remote_dir)
                                 
                                 else:
-                                    # File - download it
-                                    if preserve_folder_structure and relative_path:
-                                        # Create folder structure with preserved hierarchy
-                                        target_local_dir = get_date_folder_path(os.path.join(local_dir, relative_path))
+                                    # File - download it to appropriate location
+                                    if preserve_folder_structure and current_relative_path:
+                                        # Create folder structure and download to it
+                                        target_local_dir = os.path.join(local_base_dir, current_relative_path)
                                     else:
-                                        # Use base local directory (flattened or root level)
-                                        target_local_dir = get_date_folder_path(local_dir)
+                                        # Download to base directory (flattened)
+                                        target_local_dir = local_base_dir
                                     
+                                    # Apply date folder if enabled
+                                    target_local_dir = get_date_folder_path(target_local_dir)
                                     os.makedirs(target_local_dir, exist_ok=True)
                                     
                                     local_file_path = os.path.join(target_local_dir, filename)
@@ -698,17 +693,17 @@ class FTPClient:
                                         if file_size > 0:
                                             files_processed += 1
                                             bytes_transferred += file_size
-                                            folder_info = f" in {relative_path}/" if preserve_folder_structure and relative_path else ""
+                                            folder_info = f" in {current_relative_path}/" if current_relative_path else ""
                                             log_messages.append(f"Downloaded: {filename}{folder_info} ({file_size} bytes)")
                                         else:
                                             log_messages.append(f"Failed: {filename} (0 bytes)")
-                                            os.remove(local_file_path)
+                                            if os.path.exists(local_file_path):
+                                                os.remove(local_file_path)
                                         
                                     except Exception as e:
                                         log_messages.append(f"Failed to download {filename}: {str(e)}")
                                         if os.path.exists(local_file_path):
                                             os.remove(local_file_path)
-                                        continue
                 
                 except Exception as e:
                     log_messages.append(f"Error processing directory {remote_dir}: {str(e)}")
@@ -787,14 +782,11 @@ class FTPClient:
                         try:
                             log_messages.append(f"Processing directory: {dir_name}")
                             
-                            # Use the new recursive function instead of inline logic
                             if preserve_folder_structure:
-                                # Create subdirectory structure
-                                subdir_local_path = os.path.join(final_local_path, dir_name)
-                                os.makedirs(subdir_local_path, exist_ok=True)
+                                # Create subdirectory in local path and download to it
                                 download_recursive(f"{remote_path}/{dir_name}", final_local_path, dir_name)
                             else:
-                                # Flatten structure - download to main directory
+                                # Flatten structure - download all files to main directory
                                 download_recursive(f"{remote_path}/{dir_name}", final_local_path, "")
                             
                         except Exception as e:
