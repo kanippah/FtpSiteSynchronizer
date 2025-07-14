@@ -142,6 +142,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Network Drive Permission Issue Fixed ✅
+- **Ubuntu Server Permission Error Resolved**: Fixed [Errno 13] Permission denied errors when downloading to network drives
+- **Automatic User Permission Detection**: Network drives now automatically mount with current user's uid/gid for proper permissions
+- **Enhanced Permission Checking**: Added check_drive_permissions() function to validate read/write access before job execution
+- **Improved Error Messages**: Jobs now provide clear error messages when network drive permissions are insufficient
+- **CIFS/NFS Mount Options**: Updated mount commands to include proper uid/gid settings for the current user
+- **Scheduler Enhancement**: Network drive paths are now validated and checked for permissions before directory creation
+- **Deploy Script Update**: Added migration to fix any existing jobs with None folder names
+- **Production Ready**: Network drive downloads now work seamlessly on Ubuntu 24.04 servers with proper mount permissions
+
 ### July 2025 - Automatic Monthly Folder Upload Feature Implemented ✅
 - **Feature Complete**: Successfully implemented automatic monthly folder upload functionality that allows upload jobs to use existing local folders instead of downloading first
 - **Database Enhancement**: Added use_local_folders and upload_date_folder_format columns to jobs table with proper migration support

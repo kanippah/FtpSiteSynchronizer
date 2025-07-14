@@ -109,8 +109,14 @@ class NetworkDriveManager:
                 f.write(f"password={password}\n")
             os.chmod(creds_file, 0o600)
             
-            # Mount command
-            mount_options = drive.mount_options or 'uid=1000,gid=1000,iocharset=utf8,file_mode=0777,dir_mode=0777'
+            # Mount command with proper permissions for current user
+            import pwd
+            import os
+            current_user = pwd.getpwuid(os.getuid())
+            uid = current_user.pw_uid
+            gid = current_user.pw_gid
+            
+            mount_options = drive.mount_options or f'uid={uid},gid={gid},iocharset=utf8,file_mode=0777,dir_mode=0777,rw'
             cmd = [
                 'sudo', 'mount', '-t', 'cifs',
                 drive.server_path, drive.mount_point,
@@ -154,8 +160,14 @@ class NetworkDriveManager:
                 if nfs_check.returncode != 0:
                     raise Exception("NFS mount utilities not found. Install nfs-common package: sudo apt install nfs-common")
             
-            # Mount command
-            mount_options = drive.mount_options or 'defaults'
+            # Mount command with proper permissions for current user
+            import pwd
+            import os
+            current_user = pwd.getpwuid(os.getuid())
+            uid = current_user.pw_uid
+            gid = current_user.pw_gid
+            
+            mount_options = drive.mount_options or f'defaults,uid={uid},gid={gid}'
             cmd = [
                 'sudo', 'mount', '-t', 'nfs',
                 drive.server_path, drive.mount_point,
@@ -521,3 +533,42 @@ Current environment limitations prevent actual network mounting.
                 
         except Exception as e:
             return {'success': False, 'message': str(e)}
+    
+    def check_drive_permissions(self, drive_id):
+        """Check if a network drive has proper permissions for file operations"""
+        try:
+            drive = NetworkDrive.query.get(drive_id)
+            if not drive:
+                return {'success': False, 'error': 'Drive not found'}
+            
+            # Check if drive is mounted
+            if not drive.is_mounted or not self.is_mounted(drive.mount_point):
+                return {'success': False, 'error': f'Drive {drive.name} is not mounted'}
+            
+            # Check if mount point exists
+            if not os.path.exists(drive.mount_point):
+                return {'success': False, 'error': f'Mount point {drive.mount_point} does not exist'}
+            
+            # Test read permissions
+            try:
+                os.listdir(drive.mount_point)
+            except PermissionError:
+                return {'success': False, 'error': f'No read permission for {drive.mount_point}'}
+            except Exception as e:
+                return {'success': False, 'error': f'Cannot read from {drive.mount_point}: {str(e)}'}
+            
+            # Test write permissions by creating a test file
+            test_file = os.path.join(drive.mount_point, '.write_test')
+            try:
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+            except PermissionError:
+                return {'success': False, 'error': f'No write permission for {drive.mount_point}. Check mount options (uid/gid settings)'}
+            except Exception as e:
+                return {'success': False, 'error': f'Cannot write to {drive.mount_point}: {str(e)}'}
+            
+            return {'success': True, 'message': f'Drive {drive.name} has proper read/write permissions'}
+            
+        except Exception as e:
+            return {'success': False, 'error': f'Permission check failed: {str(e)}'}

@@ -196,7 +196,65 @@ def execute_download_job(job, job_log):
         else:
             local_path = job.local_path or './downloads'
         
-        os.makedirs(local_path, exist_ok=True)
+        # Check if path is on a network drive and handle permissions
+        if local_path.startswith('/mnt/') or local_path.startswith('\\\\'):
+            # Network drive path - check mount status and permissions
+            try:
+                from network_drive_manager import NetworkDriveManager
+                drive_manager = NetworkDriveManager()
+                
+                # Find matching network drive
+                from models import NetworkDrive
+                network_drive = None
+                for drive in NetworkDrive.query.all():
+                    if local_path.startswith(drive.mount_point):
+                        network_drive = drive
+                        break
+                
+                if network_drive:
+                    # Ensure drive is mounted
+                    if not network_drive.is_mounted:
+                        mount_success = drive_manager.mount_drive(network_drive.id)
+                        if not mount_success:
+                            return {
+                                'success': False,
+                                'error': f'Failed to mount network drive {network_drive.name}. Check network drive configuration.'
+                            }
+                    
+                    # Check permissions before proceeding
+                    permission_check = drive_manager.check_drive_permissions(network_drive.id)
+                    if not permission_check['success']:
+                        return {
+                            'success': False,
+                            'error': f'Network drive permission error: {permission_check["error"]}. Try remounting the drive or check mount options.'
+                        }
+                    
+                    # Try to create directory with proper permissions
+                    try:
+                        os.makedirs(local_path, exist_ok=True)
+                    except PermissionError:
+                        return {
+                            'success': False,
+                            'error': f'Permission denied: Cannot create directory {local_path}. Check mount options (uid={os.getuid()}, gid={os.getgid()}) and user permissions.'
+                        }
+                    except Exception as e:
+                        return {
+                            'success': False,
+                            'error': f'Cannot create directory {local_path}: {str(e)}'
+                        }
+                else:
+                    return {
+                        'success': False,
+                        'error': f'Network drive not found for path {local_path}. Configure the network drive first.'
+                    }
+            except Exception as e:
+                return {
+                    'success': False,
+                    'error': f'Network drive error: {str(e)}'
+                }
+        else:
+            # Local path - standard directory creation
+            os.makedirs(local_path, exist_ok=True)
         
         files_processed = 0
         bytes_transferred = 0

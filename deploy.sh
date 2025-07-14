@@ -557,6 +557,14 @@ try:
             else:
                 print('Automatic monthly upload feature columns already exist')
                 
+            # Migration 10: Fix any existing jobs with None folder names
+            cursor.execute(\\\"UPDATE jobs SET job_folder_name = REPLACE(name, ' ', '-') WHERE job_group_id IS NOT NULL AND (job_folder_name IS NULL OR job_folder_name = 'None' OR job_folder_name = '')\\\")
+            affected_rows = cursor.rowcount
+            if affected_rows > 0:
+                print(f'Fixed {affected_rows} jobs with None folder names - auto-generated folder names from job names')
+            else:
+                print('No jobs with None folder names found')
+                
             conn.commit()
             cursor.close()
             conn.close()
