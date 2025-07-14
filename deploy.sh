@@ -5,6 +5,7 @@
 # Enhanced with Job Groups, Network Drive mounting, and File Browser support
 #
 # Latest Features (July 2025):
+# - Preserve Folder Structure: Maintain original directory hierarchy during transfers
 # - Nested Folder Structure: Three-level hierarchy YYYY-MM/group_folder_name/job_folder_name/
 # - Job Folder Names: Individual job organization within job groups
 # - Network Drive Browsing: Browse mounted CIFS/NFS drives through web interface
@@ -524,7 +525,17 @@ try:
             else:
                 print('Job folder name column already exists in jobs table')
                 
-            # Migration 7: Make job group folder name optional
+            # Migration 7: Add preserve_folder_structure to jobs table for maintaining directory hierarchy
+            cursor.execute(\\\"SELECT column_name FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'preserve_folder_structure'\\\")
+            
+            if not cursor.fetchone():
+                print('Adding preserve_folder_structure column to jobs table for maintaining original folder hierarchy...')
+                cursor.execute('ALTER TABLE jobs ADD COLUMN preserve_folder_structure BOOLEAN DEFAULT FALSE;')
+                print('Preserve folder structure column added to jobs table - enables maintaining original directory hierarchy during transfers')
+            else:
+                print('Preserve folder structure column already exists in jobs table')
+                
+            # Migration 8: Make job group folder name optional
             cursor.execute(\\\"SELECT is_nullable FROM information_schema.columns WHERE table_name = 'job_groups' AND column_name = 'group_folder_name'\\\")
             result = cursor.fetchone()
             
