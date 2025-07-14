@@ -4,6 +4,7 @@ Handles mounting and unmounting of CIFS/SMB and NFS network drives
 """
 
 import os
+import pwd
 import subprocess
 import logging
 from datetime import datetime
@@ -38,7 +39,6 @@ class NetworkDriveManager:
                 os.makedirs(drive.mount_point, exist_ok=True)
                 
                 # Set proper ownership and permissions
-                import pwd
                 current_user = pwd.getpwuid(os.getuid())
                 uid = current_user.pw_uid
                 gid = current_user.pw_gid
@@ -71,7 +71,6 @@ class NetworkDriveManager:
                     raise Exception(f"Failed to create mount point directory: {mkdir_result.stderr}")
                 
                 # Set proper ownership
-                import pwd
                 current_user = pwd.getpwuid(os.getuid())
                 uid = current_user.pw_uid
                 gid = current_user.pw_gid
@@ -163,8 +162,6 @@ class NetworkDriveManager:
             os.chmod(creds_file, 0o600)
             
             # Mount command with proper permissions for current user
-            import pwd
-            import os
             current_user = pwd.getpwuid(os.getuid())
             uid = current_user.pw_uid
             gid = current_user.pw_gid
@@ -214,8 +211,6 @@ class NetworkDriveManager:
                     raise Exception("NFS mount utilities not found. Install nfs-common package: sudo apt install nfs-common")
             
             # Mount command with proper permissions for current user
-            import pwd
-            import os
             current_user = pwd.getpwuid(os.getuid())
             uid = current_user.pw_uid
             gid = current_user.pw_gid
