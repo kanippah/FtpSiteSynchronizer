@@ -565,6 +565,10 @@ class FTPClient:
     
     def download_files_enhanced(self, remote_path, local_path, job=None):
         """Enhanced download with advanced options from job configuration"""
+        log_messages = []
+        files_processed = 0
+        bytes_transferred = 0
+        
         try:
             import ftplib
             from datetime import datetime
@@ -576,15 +580,26 @@ class FTPClient:
             use_date_folders = job.use_date_folders if job else False
             date_folder_format = job.date_folder_format if job else 'YYYY-MM-DD'
             
-            # Connect to FTP server
+            # Connect to FTP server with improved connection handling
             ftp = ftplib.FTP()
-            ftp.connect(self.host, self.port, timeout=60)
+            ftp.connect(self.host, self.port, timeout=30)
             ftp.login(self.username, self.password)
-            ftp.set_pasv(True)
             
-            files_processed = 0
-            bytes_transferred = 0
-            log_messages = []
+            # Try passive mode first, fallback to active if needed
+            try:
+                ftp.set_pasv(True)
+                # Test passive mode with a quick command
+                ftp.pwd()
+                log_messages.append("Using passive FTP mode")
+            except Exception as e:
+                log_messages.append(f"Passive mode failed ({e}), trying active mode")
+                try:
+                    ftp.set_pasv(False)
+                    ftp.pwd()
+                    log_messages.append("Using active FTP mode")
+                except Exception as e2:
+                    log_messages.append(f"Both FTP modes failed: passive={e}, active={e2}")
+                    raise Exception(f"FTP connection failed in both modes: {e2}")
             
             def get_unique_filename(file_path):
                 """Generate unique filename if duplicate renaming is enabled"""
@@ -771,45 +786,20 @@ class FTPClient:
                     for dir_name in directories_found:
                         try:
                             log_messages.append(f"Processing directory: {dir_name}")
-                            ftp.cwd(f"{remote_path}/{dir_name}")
                             
-                            subdir_lines = []
-                            ftp.retrlines('LIST', subdir_lines.append)
+                            # Use the new recursive function instead of inline logic
+                            if preserve_folder_structure:
+                                # Create subdirectory structure
+                                subdir_local_path = os.path.join(final_local_path, dir_name)
+                                os.makedirs(subdir_local_path, exist_ok=True)
+                                download_recursive(f"{remote_path}/{dir_name}", final_local_path, dir_name)
+                            else:
+                                # Flatten structure - download to main directory
+                                download_recursive(f"{remote_path}/{dir_name}", final_local_path, "")
                             
-                            for line in subdir_lines:
-                                parts = line.split()
-                                if len(parts) >= 9:
-                                    permissions = parts[0]
-                                    filename = ' '.join(parts[8:])
-                                    
-                                    if filename not in ['.', '..'] and not permissions.startswith('d'):
-                                        # Download file to main directory (flattened structure)
-                                        local_file_path = os.path.join(final_local_path, filename)
-                                        local_file_path = get_unique_filename(local_file_path)
-                                        
-                                        try:
-                                            with open(local_file_path, 'wb') as local_file:
-                                                ftp.retrbinary(f'RETR {filename}', local_file.write)
-                                            
-                                            file_size = os.path.getsize(local_file_path)
-                                            if file_size > 0:
-                                                files_processed += 1
-                                                bytes_transferred += file_size
-                                                log_messages.append(f"Downloaded from {dir_name}: {filename} ({file_size} bytes)")
-                                            else:
-                                                if os.path.exists(local_file_path):
-                                                    os.remove(local_file_path)
-                                        
-                                        except Exception as e:
-                                            log_messages.append(f"Error downloading {dir_name}/{filename}: {str(e)}")
-                                            if os.path.exists(local_file_path):
-                                                os.remove(local_file_path)
-                            
-                            # Go back to root directory
-                            ftp.cwd(remote_path)
-                        
                         except Exception as e:
                             log_messages.append(f"Error processing directory {dir_name}: {str(e)}")
+                            continue
                 
                 log_messages.append(f"Download complete: {files_processed} files, {bytes_transferred} bytes")
                 
