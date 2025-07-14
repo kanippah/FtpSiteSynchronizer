@@ -300,6 +300,7 @@ def new_job():
             
             # Handle advanced download options (moved from site-level to job-level)
             job.enable_recursive_download = bool(request.form.get('enable_recursive_download'))
+            job.preserve_folder_structure = bool(request.form.get('preserve_folder_structure'))
             job.enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
             job.use_date_folders = bool(request.form.get('use_date_folders'))
             job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')
@@ -438,6 +439,7 @@ def edit_job(job_id):
             
             # Handle advanced download options (moved from site-level to job-level)
             job.enable_recursive_download = bool(request.form.get('enable_recursive_download'))
+            job.preserve_folder_structure = bool(request.form.get('preserve_folder_structure'))
             job.enable_duplicate_renaming = bool(request.form.get('enable_duplicate_renaming'))
             job.use_date_folders = bool(request.form.get('use_date_folders'))
             job.date_folder_format = request.form.get('date_folder_format', 'YYYY-MM-DD')

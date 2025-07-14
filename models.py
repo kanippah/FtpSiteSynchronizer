@@ -55,6 +55,7 @@ class Job(db.Model):
     
     # Advanced download options (moved from sites to jobs for better granularity)
     enable_recursive_download = db.Column(db.Boolean, default=False)  # Traverse all subfolders and download files only
+    preserve_folder_structure = db.Column(db.Boolean, default=False)  # Maintain original folder hierarchy during transfer
     enable_duplicate_renaming = db.Column(db.Boolean, default=False)  # Auto-rename duplicate files with _1, _2, etc.
     use_date_folders = db.Column(db.Boolean, default=False)  # Create date-based folders for downloads
     date_folder_format = db.Column(db.String(20), default='YYYY-MM-DD')  # Date format for folder creation

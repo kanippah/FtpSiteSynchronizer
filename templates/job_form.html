@@ -265,6 +265,14 @@
                                     </div>
                                     
                                     <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="preserve_folder_structure" name="preserve_folder_structure" {{ 'checked' if job and job.preserve_folder_structure else '' }}>
+                                        <label class="form-check-label" for="preserve_folder_structure">
+                                            <strong>Preserve Folder Structure</strong>
+                                        </label>
+                                        <div class="form-text">Maintain original folder hierarchy during transfer (works with recursive download)</div>
+                                    </div>
+                                    
+                                    <div class="form-check mb-3">
                                         <input class="form-check-input" type="checkbox" id="enable_duplicate_renaming" name="enable_duplicate_renaming" {{ 'checked' if job and job.enable_duplicate_renaming else '' }}>
                                         <label class="form-check-label" for="enable_duplicate_renaming">
                                             <strong>Auto-Rename Duplicate Files</strong>

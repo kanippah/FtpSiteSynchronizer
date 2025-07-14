@@ -229,6 +229,7 @@ def execute_download_job(job, job_log):
             else:
                 # Check if any advanced download features are enabled at job level
                 has_advanced_features = (job.enable_recursive_download or 
+                                       job.preserve_folder_structure or
                                        job.enable_duplicate_renaming or 
                                        job.use_date_folders)
                 
@@ -315,6 +316,7 @@ def execute_download_job(job, job_log):
             # Download specific files/folders
             # Check if any advanced download features are enabled at job level
             has_advanced_features = (job.enable_recursive_download or 
+                                   job.preserve_folder_structure or
                                    job.enable_duplicate_renaming or 
                                    job.use_date_folders)
             
