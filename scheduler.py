@@ -180,12 +180,10 @@ def execute_download_job(job, job_log):
             group_manager = JobGroupManager()
             base_path = job.local_path or './downloads'
             
-            # Fix None folder issue by auto-generating job folder name if needed
+            # Use job folder name only if it's explicitly set and not empty
             job_folder_name = job.job_folder_name
-            if not job_folder_name or job_folder_name == 'None' or job_folder_name.strip() == '':
-                job_folder_name = job.name.replace(' ', '-').replace('/', '-')
-                job.job_folder_name = job_folder_name
-                db.session.commit()
+            if job_folder_name == 'None' or (job_folder_name and job_folder_name.strip() == ''):
+                job_folder_name = None
             
             # Ensure the group folder structure exists first
             group_manager.ensure_group_folder(job.job_group_id, base_path, job_folder_name=job_folder_name)
@@ -665,12 +663,10 @@ def get_monthly_folder_path(job):
         from job_group_manager import JobGroupManager
         group_manager = JobGroupManager()
         
-        # Fix None folder issue by auto-generating job folder name if needed
+        # Use job folder name only if it's explicitly set and not empty
         job_folder_name = job.job_folder_name
-        if not job_folder_name or job_folder_name == 'None' or job_folder_name.strip() == '':
-            job_folder_name = job.name.replace(' ', '-').replace('/', '-')
-            job.job_folder_name = job_folder_name
-            db.session.commit()
+        if job_folder_name == 'None' or (job_folder_name and job_folder_name.strip() == ''):
+            job_folder_name = None
         
         return group_manager.get_group_folder_path(
             job.job_group_id, 
@@ -708,9 +704,9 @@ def get_monthly_folder_path(job):
 
 def fix_none_folder_issue(job):
     """Fix the 'None' folder issue in job group paths"""
-    if job.job_group_id and not job.job_folder_name:
-        # Set a default job folder name based on job name
-        job.job_folder_name = job.name.replace(' ', '-')
+    if job.job_group_id and job.job_folder_name == 'None':
+        # Clear the 'None' value - empty folder name means no job folder
+        job.job_folder_name = None
         db.session.commit()
         return job.job_folder_name
     return job.job_folder_name

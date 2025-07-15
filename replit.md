@@ -142,6 +142,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Empty Job Folder Name Logic Fixed ✅
+- **Fixed Auto-Generation Issue**: When a job is added to a group with an empty job folder name, the system now correctly creates no job folder instead of auto-generating one from the job name
+- **Proper Empty Handling**: Jobs with job_folder_name as NULL, empty string, or 'None' now use only the group's date organization path (e.g., downloads/2025-07/) without creating job-specific subfolders
+- **Consistent Behavior**: Both download and upload jobs now respect the empty folder name setting across all job execution paths
+- **Database Cleanup**: Updated existing jobs to clear any 'None' or empty job folder names to maintain clean folder structure
+- **User Control**: Users can now explicitly control whether jobs create individual folders within groups by setting or clearing the job folder name field
+
 ### July 2025 - Upload Directory Creation Issue Fixed ✅
 - **Remote Directory Creation**: Fixed "550 No such file or directory" upload errors by implementing recursive directory creation on FTP/SFTP servers
 - **Automatic Folder Structure**: Upload process now automatically creates required directory structure (e.g., IQNT/, Sonus/) on target servers
