@@ -553,6 +553,17 @@ def execute_local_folder_upload(job, job_log, target_site):
         # Create target client
         target_client = FTPClient(target_site.protocol, target_site.host, target_site.port, target_site.username, target_password, **target_kwargs)
         
+        # Test connection first
+        connection_test = target_client.test_connection()
+        if not connection_test['success']:
+            return {
+                'success': False,
+                'error': f'Cannot connect to target site: {connection_test["error"]}'
+            }
+        
+        # Initialize log messages early for debugging
+        log_messages = []
+        
         # Determine local folder path
         local_folder = get_monthly_folder_path(job)
         
@@ -591,17 +602,27 @@ def execute_local_folder_upload(job, job_log, target_site):
         time.sleep(0.1)  # Small delay to ensure filesystem consistency
         
         # Check if folder has files
-        file_count = sum(len(files) for _, _, files in os.walk(local_folder))
+        file_count = 0
+        file_paths = []
+        for root, dirs, files in os.walk(local_folder):
+            for file in files:
+                file_count += 1
+                file_paths.append(os.path.join(root, file))
+                if len(file_paths) <= 5:  # Log first 5 files for debugging
+                    log_messages.append(f"Found file: {os.path.join(root, file)}")
+        
+        log_messages.append(f"Total files found: {file_count}")
+        
         if file_count == 0:
             return {
                 'success': False,
-                'error': f'No files found in local folder: {local_folder}. Total folders checked: {local_folder}'
+                'error': f'No files found in local folder: {local_folder}. Total folders checked: {local_folder}',
+                'log': '\n'.join(log_messages)
             }
         
         # Upload files from local folder
         files_processed = 0
         bytes_transferred = 0
-        log_messages = []
         
         log_messages.append(f"Uploading from local folder: {local_folder}")
         
