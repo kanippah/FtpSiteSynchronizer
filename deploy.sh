@@ -263,6 +263,9 @@ $APP_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /mnt/*
 $APP_USER ALL=(ALL) NOPASSWD: /bin/rmdir /mnt/*
 $APP_USER ALL=(ALL) NOPASSWD: /bin/chown * /mnt/*
 $APP_USER ALL=(ALL) NOPASSWD: /bin/chmod * /mnt/*
+# Network drive permission fixing
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/find /mnt/* -type d -exec chmod 777 {} \;
+$APP_USER ALL=(ALL) NOPASSWD: /usr/bin/find /mnt/* -type f -exec chmod 666 {} \;
 EOF
 
 chmod 440 /etc/sudoers.d/ftpmanager-nfs

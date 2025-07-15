@@ -166,7 +166,18 @@ class NetworkDriveManager:
             uid = current_user.pw_uid
             gid = current_user.pw_gid
             
-            mount_options = drive.mount_options or f'uid={uid},gid={gid},iocharset=utf8,file_mode=0777,dir_mode=0777,rw'
+            # Enhanced mount options for better permissions
+            default_options = f'uid={uid},gid={gid},iocharset=utf8,file_mode=0666,dir_mode=0777,rw,vers=2.0'
+            if drive.mount_options:
+                # Ensure uid/gid are always set correctly even with custom options
+                custom_opts = drive.mount_options
+                if f'uid={uid}' not in custom_opts:
+                    custom_opts = f'uid={uid},{custom_opts}'
+                if f'gid={gid}' not in custom_opts:
+                    custom_opts = f'gid={gid},{custom_opts}'
+                mount_options = custom_opts
+            else:
+                mount_options = default_options
             cmd = [
                 'sudo', 'mount', '-t', 'cifs',
                 drive.server_path, drive.mount_point,
@@ -215,7 +226,18 @@ class NetworkDriveManager:
             uid = current_user.pw_uid
             gid = current_user.pw_gid
             
-            mount_options = drive.mount_options or f'defaults,uid={uid},gid={gid}'
+            # Enhanced NFS mount options for better permissions
+            default_options = f'rw,vers=4,uid={uid},gid={gid},rsize=8192,wsize=8192'
+            if drive.mount_options:
+                # Ensure uid/gid are always set correctly even with custom options
+                custom_opts = drive.mount_options
+                if f'uid={uid}' not in custom_opts:
+                    custom_opts = f'uid={uid},{custom_opts}'
+                if f'gid={gid}' not in custom_opts:
+                    custom_opts = f'gid={gid},{custom_opts}'
+                mount_options = custom_opts
+            else:
+                mount_options = default_options
             cmd = [
                 'sudo', 'mount', '-t', 'nfs',
                 drive.server_path, drive.mount_point,
