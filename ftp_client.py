@@ -746,19 +746,8 @@ class FTPClient:
                 except Exception as e:
                     log_messages.append(f"Error processing directory {remote_dir}: {str(e)}")
             
-            # Handle job group folder organization with job folder name
-            if job and job.job_group_id:
-                try:
-                    from job_group_manager import JobGroupManager
-                    group_manager = JobGroupManager()
-                    local_path = group_manager.ensure_group_folder(
-                        job.job_group_id, 
-                        local_path, 
-                        reference_date=None, 
-                        job_folder_name=job.job_folder_name
-                    )
-                except Exception as e:
-                    log_messages.append(f"Warning: Failed to apply job group folder: {e}")
+            # Job group folder organization is handled in scheduler.py
+            # Don't apply it again here to avoid duplication
             
             # Start download process - download ALL files with advanced features
             log_messages.append("Starting enhanced download with all advanced features")

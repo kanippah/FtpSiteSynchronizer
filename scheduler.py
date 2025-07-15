@@ -187,12 +187,15 @@ def execute_download_job(job, job_log):
                 job.job_folder_name = job_folder_name
                 db.session.commit()
             
+            # Ensure the group folder structure exists first
+            group_manager.ensure_group_folder(job.job_group_id, base_path, job_folder_name=job_folder_name)
+            
+            # Get the final path including job folder
             local_path = group_manager.get_group_folder_path(
                 job.job_group_id, 
                 base_path, 
                 job_folder_name=job_folder_name
             )
-            group_manager.ensure_group_folder(job.job_group_id, base_path, job_folder_name=job_folder_name)
         else:
             local_path = job.local_path or './downloads'
         
@@ -584,6 +587,10 @@ def execute_local_folder_upload(job, job_log, target_site):
                     'success': False,
                     'error': f'Local folder not found: {local_folder}. Error scanning for alternatives: {str(e)}'
                 }
+        
+        # Force refresh of file system cache by re-scanning
+        import time
+        time.sleep(0.1)  # Small delay to ensure filesystem consistency
         
         # Check if folder has files
         file_count = sum(len(files) for _, _, files in os.walk(local_folder))
