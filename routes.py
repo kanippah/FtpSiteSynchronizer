@@ -323,9 +323,7 @@ def new_job():
                 job.use_local_folders = False
                 job.upload_date_folder_format = 'YYYY-MM'
             
-            # Fix None folder issue - set default job folder name if job is assigned to group
-            if job.job_group_id and not job.job_folder_name:
-                job.job_folder_name = job.name.replace(' ', '-')
+            # Allow empty job folder names - if job_folder_name is empty, no job folder will be created
             
             db.session.add(job)
             db.session.commit()
@@ -466,9 +464,7 @@ def edit_job(job_id):
             else:
                 job.job_folder_name = None
             
-            # Fix None folder issue - set default job folder name if job is assigned to group
-            if job.job_group_id and not job.job_folder_name:
-                job.job_folder_name = job.name.replace(' ', '-')
+            # Allow empty job folder names - if job_folder_name is empty, no job folder will be created
             
             # Handle filename date filter
             job.use_filename_date_filter = bool(request.form.get('use_filename_date_filter'))
