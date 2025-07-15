@@ -142,6 +142,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Upload Folder Structure Issue Fixed ✅
+- **Fixed Nested Folder Upload Problem**: Upload jobs no longer try to recreate local folder structures on target FTP servers
+- **Flattened Upload Structure**: Files are now uploaded directly to the target server's root directory without attempting to create nested folders
+- **Enhanced Error Logging**: Upload logs now show both the filename and the source folder path for better troubleshooting  
+- **Resolved Permission Errors**: Fixed "550 Operation not permitted" errors caused by attempting to create unauthorized directories on target servers
+- **Preserved File Information**: Upload logs maintain source folder path information while uploading files with flattened structure
+
 ### July 2025 - Empty Job Folder Name Logic Fixed ✅
 - **Fixed Auto-Generation Issue**: When a job is added to a group with an empty job folder name, the system now correctly creates no job folder instead of auto-generating one from the job name
 - **Proper Empty Handling**: Jobs with job_folder_name as NULL, empty string, or 'None' now use only the group's date organization path (e.g., downloads/2025-07/) without creating job-specific subfolders

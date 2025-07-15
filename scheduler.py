@@ -605,21 +605,23 @@ def execute_local_folder_upload(job, job_log, target_site):
         
         log_messages.append(f"Uploading from local folder: {local_folder}")
         
-        # Upload all files from local folder
+        # Upload all files from local folder (flatten structure - upload only filenames)
         for root, dirs, files in os.walk(local_folder):
             for file in files:
                 local_file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(local_file_path, local_folder)
-                remote_file_path = os.path.join(target_site.remote_path, relative_path).replace('\\', '/')
+                
+                # Upload files to root directory only - don't recreate nested folder structure
+                remote_file_path = os.path.join(target_site.remote_path, file).replace('\\', '/')
                 
                 upload_result = target_client.upload_file(local_file_path, remote_file_path)
                 
                 if upload_result['success']:
                     files_processed += 1
                     bytes_transferred += os.path.getsize(local_file_path)
-                    log_messages.append(f"Uploaded: {relative_path}")
+                    log_messages.append(f"Uploaded: {file} (from {relative_path})")
                 else:
-                    log_messages.append(f"Failed to upload: {relative_path} - {upload_result.get('error', 'Unknown error')}")
+                    log_messages.append(f"Failed to upload: {file} (from {relative_path}) - {upload_result.get('error', 'Unknown error')}")
         
         return {
             'success': True,
