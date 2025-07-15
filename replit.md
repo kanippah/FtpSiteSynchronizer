@@ -190,8 +190,15 @@ Preferred communication style: Simple, everyday language.
 - **Improved Error Messages**: Jobs now provide clear error messages when network drive permissions are insufficient
 - **CIFS/NFS Mount Options**: Updated mount commands to include proper uid/gid settings for the current user
 - **Scheduler Enhancement**: Network drive paths are now validated and checked for permissions before directory creation
-- **Deploy Script Update**: Added migration to fix any existing jobs with None folder names
+- **Comprehensive Troubleshooting**: Created network_drive_troubleshooting.md guide and deploy_network_drives.sh script
 - **Production Ready**: Network drive downloads now work seamlessly on Ubuntu 24.04 servers with proper mount permissions
+
+### July 2025 - Upload Permission Issue Fixed ✅
+- **FTP Upload Root Directory Issue Resolved**: Fixed 550 Permission denied errors by updating upload site remote path from "/" to "/upload"
+- **Enhanced Upload Debugging**: Improved error messages to clearly identify FTP server-side permission restrictions vs local issues
+- **Remote Directory Creation**: Enhanced upload process to automatically create remote directories when needed
+- **Server Configuration Fix**: Updated DNS-TEST-UPLOAD site configuration to use writable directory path
+- **Production Upload Ready**: Upload jobs now correctly target writable FTP directories instead of restricted root paths
 
 ### July 2025 - Automatic Monthly Folder Upload Feature Implemented ✅
 - **Feature Complete**: Successfully implemented automatic monthly folder upload functionality that allows upload jobs to use existing local folders instead of downloading first

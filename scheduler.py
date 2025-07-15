@@ -213,30 +213,53 @@ def execute_download_job(job, job_log):
                         break
                 
                 if network_drive:
+                    log_messages.append(f"Using network drive: {network_drive.name} at {network_drive.mount_point}")
+                    
                     # Ensure drive is mounted
-                    if not network_drive.is_mounted:
+                    if not network_drive.is_mounted or not drive_manager.is_mounted(network_drive.mount_point):
+                        log_messages.append(f"Mounting network drive {network_drive.name}...")
                         mount_success = drive_manager.mount_drive(network_drive.id)
                         if not mount_success:
                             return {
                                 'success': False,
-                                'error': f'Failed to mount network drive {network_drive.name}. Check network drive configuration.'
+                                'error': f'Failed to mount network drive {network_drive.name}. Check network drive configuration and ensure CIFS/NFS utilities are installed.'
                             }
+                        log_messages.append(f"Network drive mounted successfully")
                     
                     # Check permissions before proceeding
                     permission_check = drive_manager.check_drive_permissions(network_drive.id)
                     if not permission_check['success']:
-                        return {
-                            'success': False,
-                            'error': f'Network drive permission error: {permission_check["error"]}. Try remounting the drive or check mount options.'
-                        }
+                        error_msg = permission_check.get('error', 'Unknown permission error')
+                        log_messages.append(f"Permission check failed: {error_msg}")
+                        
+                        # Try to remount with better permissions
+                        log_messages.append("Attempting to remount with proper permissions...")
+                        drive_manager.unmount_drive(network_drive.id)
+                        mount_success = drive_manager.mount_drive(network_drive.id)
+                        
+                        if mount_success:
+                            # Retry permission check
+                            permission_check = drive_manager.check_drive_permissions(network_drive.id)
+                            if not permission_check['success']:
+                                return {
+                                    'success': False,
+                                    'error': f'Network drive permission error after remount: {permission_check.get("error", "Unknown error")}. Check mount options include uid={os.getuid()},gid={os.getgid()}'
+                                }
+                            log_messages.append("Remount successful - permissions fixed")
+                        else:
+                            return {
+                                'success': False,
+                                'error': f'Network drive remount failed: {error_msg}. Ensure CIFS/NFS services are running and credentials are correct.'
+                            }
                     
                     # Try to create directory with proper permissions
                     try:
                         os.makedirs(local_path, exist_ok=True)
+                        log_messages.append(f"Created directory: {local_path}")
                     except PermissionError:
                         return {
                             'success': False,
-                            'error': f'Permission denied: Cannot create directory {local_path}. Check mount options (uid={os.getuid()}, gid={os.getgid()}) and user permissions.'
+                            'error': f'Permission denied: Cannot create directory {local_path}. Mount options should include uid={os.getuid()},gid={os.getgid()}. Current user permissions may be insufficient.'
                         }
                     except Exception as e:
                         return {
@@ -246,12 +269,12 @@ def execute_download_job(job, job_log):
                 else:
                     return {
                         'success': False,
-                        'error': f'Network drive not found for path {local_path}. Configure the network drive first.'
+                        'error': f'Network drive not found for path {local_path}. Please configure the network drive first in the Network Drives section.'
                     }
             except Exception as e:
                 return {
                     'success': False,
-                    'error': f'Network drive error: {str(e)}'
+                    'error': f'Network drive error: {str(e)}. Ensure network drive utilities are installed.'
                 }
         else:
             # Local path - standard directory creation
