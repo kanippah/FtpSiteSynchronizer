@@ -556,17 +556,41 @@ def execute_local_folder_upload(job, job_log, target_site):
         local_folder = get_monthly_folder_path(job)
         
         if not os.path.exists(local_folder):
-            return {
-                'success': False,
-                'error': f'Local folder not found: {local_folder}'
-            }
+            # Try to find any available folders with data
+            base_path = job.local_path or './downloads'
+            available_folders = []
+            
+            try:
+                for item in os.listdir(base_path):
+                    item_path = os.path.join(base_path, item)
+                    if os.path.isdir(item_path):
+                        # Check if folder has files
+                        file_count = sum(len(files) for _, _, files in os.walk(item_path))
+                        if file_count > 0:
+                            available_folders.append((item_path, file_count))
+                
+                if available_folders:
+                    # Use the folder with the most files
+                    available_folders.sort(key=lambda x: x[1], reverse=True)
+                    local_folder = available_folders[0][0]
+                    logger.info(f"Using alternative folder: {local_folder} ({available_folders[0][1]} files)")
+                else:
+                    return {
+                        'success': False,
+                        'error': f'Local folder not found: {local_folder}. No folders with files available in {base_path}'
+                    }
+            except Exception as e:
+                return {
+                    'success': False,
+                    'error': f'Local folder not found: {local_folder}. Error scanning for alternatives: {str(e)}'
+                }
         
         # Check if folder has files
         file_count = sum(len(files) for _, _, files in os.walk(local_folder))
         if file_count == 0:
             return {
                 'success': False,
-                'error': f'No files found in local folder: {local_folder}'
+                'error': f'No files found in local folder: {local_folder}. Total folders checked: {local_folder}'
             }
         
         # Upload files from local folder
@@ -648,8 +672,32 @@ def get_monthly_folder_path(job):
             job_folder_name=job_folder_name
         )
     else:
-        # Direct monthly folder path
-        return os.path.join(base_path, month_folder)
+        # Direct monthly folder path - if it doesn't exist, look for any existing dated folders
+        primary_path = os.path.join(base_path, month_folder)
+        
+        # If the primary path doesn't exist, try to find any existing month folders
+        if not os.path.exists(primary_path):
+            # Look for any folders that match the date pattern
+            pattern_paths = []
+            try:
+                if date_format == 'YYYY-MM':
+                    # Look for YYYY-MM pattern folders
+                    pattern_paths = glob.glob(os.path.join(base_path, '20??-??'))
+                elif date_format == 'YYYY-MM-DD':
+                    # Look for YYYY-MM-DD pattern folders
+                    pattern_paths = glob.glob(os.path.join(base_path, '20??-??-??'))
+                elif date_format == 'YYYYMM':
+                    # Look for YYYYMM pattern folders
+                    pattern_paths = glob.glob(os.path.join(base_path, '20????'))
+                
+                # If we found matching folders, use the most recent one
+                if pattern_paths:
+                    pattern_paths.sort(reverse=True)  # Most recent first
+                    return pattern_paths[0]
+            except Exception:
+                pass
+        
+        return primary_path
 
 def fix_none_folder_issue(job):
     """Fix the 'None' folder issue in job group paths"""

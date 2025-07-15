@@ -1,0 +1,496 @@
+2025-07-15
+10:17:27	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: Local folder not found: ./downloads/2025-07
+-	
+ 
+2025-07-15
+10:17:27	Job
+Upload to MANAGEMENT
+Failed	
+Local folder not found: ./downloads/2025-07	0s	
+2025-07-15
+10:17:27	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+10:17:23	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+10:17:14	System	Info	
+Updated job group: TEST-DOWNLOAD
+-	
+ 
+2025-07-15
+10:15:59	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: Local folder not found: ./downloads/2025-07/Upload-to-MANAGEMENT
+-	
+ 
+2025-07-15
+10:15:59	Job
+Upload to MANAGEMENT
+Failed	
+Local folder not found: ./downloads/2025-07/Upload-to-MANAGEMENT	0s	
+2025-07-15
+10:15:59	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+10:15:56	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+10:15:40	System	Info	
+Completed group execution for TEST-DOWNLOAD
+-	
+ 
+2025-07-15
+10:15:40	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: Local folder not found: ./downloads/2025-07/Upload-to-MANAGEMENT
+-	
+ 
+2025-07-15
+10:15:40	Job
+Upload to MANAGEMENT
+Failed	
+Local folder not found: ./downloads/2025-07/Upload-to-MANAGEMENT	0s	
+2025-07-15
+10:15:40	System	Info	
+Executing job Upload to MANAGEMENT in group TEST-DOWNLOAD
+-	
+ 
+2025-07-15
+10:15:16	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: Local folder not found: ./downloads/2025-07/Upload-to-MANAGEMENT
+-	
+ 
+2025-07-15
+10:15:16	Job
+Upload to MANAGEMENT
+Failed	
+Local folder not found: ./downloads/2025-07/Upload-to-MANAGEMENT	0s	
+2025-07-15
+10:15:16	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+10:14:56	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+10:14:38	System	Info	
+Created job group: TEST-DOWNLOAD
+-	
+ 
+2025-07-15
+10:11:32	System
+scheduler
+Info	
+Job "Upload to MANAGEMENT" completed successfully
+-	
+ 
+2025-07-15
+10:11:32	Job
+Upload to MANAGEMENT
+Completed	
+0s	
+2025-07-15
+10:11:32	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+10:11:26	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+10:10:34	System
+sites
+Info	
+Site "TEST-DOWNLOAD" updated
+-	
+ 
+2025-07-15
+10:10:08	System
+sites
+Info	
+Connection test successful for "TEST UPLOAD"
+-	
+ 
+2025-07-15
+10:10:08	System
+sites
+Error	
+Connection test failed for "TEST UPLOAD": Connection failed
+-	
+ 
+2025-07-15
+10:10:02	System
+sites
+Info	
+Site "TEST UPLOAD" updated
+-	
+ 
+2025-07-15
+10:00:45	System
+sites
+Error	
+Connection test failed for "TEST-DOWNLOAD": Connection failed
+-	
+ 
+2025-07-15
+10:00:10	System
+sites
+Info	
+Site "TEST-DOWNLOAD" updated
+-	
+ 
+2025-07-15
+10:00:02	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: 530 Login incorrect.
+-	
+ 
+2025-07-15
+10:00:02	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: 530 Login incorrect.
+-	
+ 
+2025-07-15
+10:00:02	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: 530 Login incorrect.
+-	
+ 
+2025-07-15
+10:00:00	Job
+Upload to MANAGEMENT
+Failed	
+530 Login incorrect.	2s	
+2025-07-15
+10:00:00	Job
+Upload to MANAGEMENT
+Failed	
+530 Login incorrect.	2s	
+2025-07-15
+10:00:00	Job
+Upload to MANAGEMENT
+Failed	
+530 Login incorrect.	2s	
+2025-07-15
+09:59:28	System
+sites
+Error	
+Connection test failed for "TEST UPLOAD": Connection failed
+-	
+ 
+2025-07-15
+09:58:49	System
+sites
+Info	
+Site "TEST UPLOAD" updated
+-	
+ 
+2025-07-15
+09:57:29	System
+sites
+Error	
+Connection test failed for "TEST UPLOAD": Connection failed
+-	
+ 
+2025-07-15
+09:57:24	System
+sites
+Info	
+Site "TEST UPLOAD" updated
+-	
+ 
+2025-07-15
+09:54:43	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: 530 Login incorrect.
+-	
+ 
+2025-07-15
+09:54:41	Job
+Upload to MANAGEMENT
+Failed	
+530 Login incorrect.	2s	
+2025-07-15
+09:54:41	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+09:54:37	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+09:51:16	System
+scheduler
+Info	
+Job "Upload to MANAGEMENT" completed successfully
+-	
+ 
+2025-07-15
+09:51:15	Job
+Upload to MANAGEMENT
+Completed	
+ 129 files  3.31 MB
+0s	
+ 
+2025-07-15
+09:51:15	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+09:49:22	System
+scheduler
+Info	
+Job "Upload to MANAGEMENT" completed successfully
+-	
+ 
+2025-07-15
+09:49:18	Job
+Upload to MANAGEMENT
+Completed	
+ 129 files  3.31 MB
+3s	
+ 
+2025-07-15
+09:49:18	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+09:49:15	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+09:45:29	System
+sites
+Info	
+Site "DNS MANAGEMENT Download" updated
+-	
+ 
+2025-07-15
+09:44:53	System
+sites
+Info	
+Site "DNS MANAGEMENT Download" updated
+-	
+ 
+2025-07-15
+09:44:17	System
+sites
+Info	
+Site "DNS MANAGEMENT Download" created
+-	
+ 
+2025-07-15
+09:41:21	System
+sites
+Info	
+Site "TEST UPLOAD" updated
+-	
+ 
+2025-07-15
+09:39:11	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: 530 Login incorrect.
+-	
+ 
+2025-07-15
+09:39:09	Job
+Upload to MANAGEMENT
+Failed	
+530 Login incorrect.	1s	
+2025-07-15
+09:39:09	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+09:39:03	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+09:38:21	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: Network drive permission error: No write permission for /mnt/cdrs...
+-	
+ 
+2025-07-15
+09:38:21	Job
+Upload to MANAGEMENT
+Failed	
+Network drive permission error: No write permission for /mnt/cdrs. Check mount options (uid/gid sett...	0s	
+2025-07-15
+09:38:21	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+09:38:18	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" updated
+-	
+ 
+2025-07-15
+09:30:37	System
+scheduler
+Error	
+Job "Upload to MANAGEMENT" failed: Network drive permission error: No write permission for /mnt/cdrs...
+-	
+ 
+2025-07-15
+09:30:36	Job
+Upload to MANAGEMENT
+Failed	
+Network drive permission error: No write permission for /mnt/cdrs. Check mount options (uid/gid sett...	0s	
+2025-07-15
+09:30:36	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" started manually
+-	
+ 
+2025-07-15
+09:30:31	System
+jobs
+Info	
+Job "Upload to MANAGEMENT" created
+-	
+ 
+2025-07-15
+09:29:46	System
+sites
+Info	
+Site "DNS MANAGEMENT UPLOAD" created
+-	
+ 
+2025-07-15
+09:29:05	System
+sites
+Info	
+Site "TEST UPLOAD" created
+-	
+ 
+2025-07-15
+09:11:18	System
+sites
+Info	
+Site "TEST-DOWNLOAD" created
+-	
+ 
+2025-07-14
+17:48:12	System
+network_drives
+Info	
+Successfully mounted CIFS drive CDR Drive CIFS
+-	
+ 
+2025-07-14
+17:48:12	System
+network_drives
+Info	
+Executing mount command: sudo mount -t cifs //10.10.10.28/CDRs /mnt/cdrs -o [credentials]
+-	
+ 
+2025-07-14
+17:48:12	System
+network_drives
+Info	
+Using username: dnscdr for CIFS mount
+-	
+ 
+2025-07-14
+17:48:12	System
+network_drives
+Info	
+Starting CIFS mount for drive CDR Drive CIFS to /mnt/cdrs
+-	
+ 
+2025-07-14
+17:48:12	System
+network_drives
+Info	
+Created mount point with sudo and set permissions: uid=1001, gid=1001
+-	
+ 
+2025-07-14
+17:48:11	System
+network_drives
+Info	
+Creating mount point with sudo: /mnt/cdrs
+-	
+ 
+2025-07-14
+17:48:11	System
+network_drives
+Info	
+Creating mount point directory: /mnt/cdrs
+-	
+ 
+2025-07-14
+17:48:08	System	Info	
+Created network drive configuration: CDR Drive CIFS

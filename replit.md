@@ -142,6 +142,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 2025 - Local Folder Upload Issue Fixed ✅
+- **Upload Job Error Resolved**: Fixed "Local folder not found: ./downloads/2025-07" errors by implementing intelligent folder detection
+- **Monthly Folder Logic Enhanced**: Upload jobs now automatically find available folders with files when target monthly folder doesn't exist
+- **Alternative Folder Discovery**: System automatically uses the folder with the most files as fallback for upload operations
+- **None Folder Names Fixed**: Updated database to replace any "None" job folder names with proper auto-generated names from job names
+- **Robust Error Handling**: Enhanced local folder upload with comprehensive error messages and available folder scanning
+- **Production Ready**: Monthly folder upload functionality now works seamlessly even when exact monthly folders don't exist yet
+
 ### July 2025 - Ubuntu Deployment Variable Scoping Issue Fixed ✅
 - **Critical Bug Fixed**: Resolved "cannot access local variable 'os' where it is not associated" error on Ubuntu server deployment
 - **Import Organization**: Moved `pwd` and `os` imports to file header to prevent variable scoping issues in try/except blocks
