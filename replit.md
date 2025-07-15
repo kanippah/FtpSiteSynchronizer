@@ -142,13 +142,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### July 2025 - Local Folder Upload Issue Fixed ✅
+### July 2025 - Upload Directory Creation Issue Fixed ✅
+- **Remote Directory Creation**: Fixed "550 No such file or directory" upload errors by implementing recursive directory creation on FTP/SFTP servers
+- **Automatic Folder Structure**: Upload process now automatically creates required directory structure (e.g., IQNT/, Sonus/) on target servers
+- **Enhanced FTP Client**: Added `_create_remote_directory` function to handle path-by-path directory creation with proper error handling
 - **Upload Job Error Resolved**: Fixed "Local folder not found: ./downloads/2025-07" errors by implementing intelligent folder detection
 - **Monthly Folder Logic Enhanced**: Upload jobs now automatically find available folders with files when target monthly folder doesn't exist
 - **Alternative Folder Discovery**: System automatically uses the folder with the most files as fallback for upload operations
 - **None Folder Names Fixed**: Updated database to replace any "None" job folder names with proper auto-generated names from job names
-- **Robust Error Handling**: Enhanced local folder upload with comprehensive error messages and available folder scanning
-- **Production Ready**: Monthly folder upload functionality now works seamlessly even when exact monthly folders don't exist yet
+- **Production Ready**: Complete upload workflow now handles both local folder detection and remote directory creation seamlessly
 
 ### July 2025 - Ubuntu Deployment Variable Scoping Issue Fixed ✅
 - **Critical Bug Fixed**: Resolved "cannot access local variable 'os' where it is not associated" error on Ubuntu server deployment

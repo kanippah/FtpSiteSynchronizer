@@ -225,16 +225,10 @@ class FTPClient:
             if not self.connect():
                 return {'success': False, 'error': 'Connection failed'}
             
-            # Create remote directory if needed
+            # Create remote directory recursively if needed
             remote_dir = os.path.dirname(remote_path)
             if remote_dir and remote_dir != '.':
-                try:
-                    if self.protocol == 'ftp':
-                        self.connection.mkd(remote_dir)
-                    elif self.protocol == 'sftp':
-                        self.connection.mkdir(remote_dir)
-                except:
-                    pass  # Directory might already exist
+                self._create_remote_directory(remote_dir)
             
             if self.protocol == 'ftp':
                 with open(local_path, 'rb') as local_file:
@@ -255,6 +249,50 @@ class FTPClient:
         except Exception as e:
             self.disconnect()
             return {'success': False, 'error': str(e)}
+    
+    def _create_remote_directory(self, remote_path):
+        """Create remote directory recursively"""
+        try:
+            if self.protocol == 'ftp':
+                # Split path and create directories one by one
+                path_parts = remote_path.strip('/').split('/')
+                current_path = ''
+                
+                for part in path_parts:
+                    if not part:
+                        continue
+                    current_path = f"{current_path}/{part}" if current_path else part
+                    
+                    try:
+                        self.connection.mkd(current_path)
+                    except Exception:
+                        # Directory might already exist, check if we can change to it
+                        try:
+                            self.connection.cwd(current_path)
+                            self.connection.cwd('/')  # Go back to root
+                        except:
+                            # If we can't change to it, it probably doesn't exist and creation failed
+                            pass
+                            
+            elif self.protocol == 'sftp':
+                # SFTP doesn't have recursive mkdir, so we need to do it manually
+                path_parts = remote_path.strip('/').split('/')
+                current_path = ''
+                
+                for part in path_parts:
+                    if not part:
+                        continue
+                    current_path = f"{current_path}/{part}" if current_path else part
+                    
+                    try:
+                        self.connection.mkdir(current_path)
+                    except Exception:
+                        # Directory might already exist
+                        pass
+                        
+        except Exception:
+            # Ignore directory creation errors - upload might still work
+            pass
     
     def download_files(self, remote_path, local_path):
         """Download all files from remote directory"""
